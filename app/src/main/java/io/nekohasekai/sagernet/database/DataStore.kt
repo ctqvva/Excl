@@ -36,8 +36,11 @@ import io.nekohasekai.sagernet.ktx.*
 import java.io.BufferedReader
 import java.io.StringReader
 import java.util.Properties
+import java.security.SecureRandom
 
 object DataStore : OnPreferenceDataStoreChangeListener {
+
+    private val localAuthRandom = SecureRandom()
 
     val configurationStore = RoomPreferenceDataStore(PublicDatabase.kvPairDao)
     val profileCacheStore = RoomPreferenceDataStore(InMemoryDatabase.kvPairDao)
@@ -78,6 +81,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
             && configurationStore.getString("outboundDomainStrategyForServer") == null) {
             configurationStore.putString("outboundDomainStrategyForServer", outboundDomainStrategy)
         }
+        ensureLocalProxyAuthSecrets()
     }
 
     var selectedProxy by configurationStore.long(Key.PROFILE_ID)
@@ -185,6 +189,10 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var socksPort: Int
         get() = getLocalPort(Key.SOCKS_PORT, 2080)
         set(value) = saveLocalPort(Key.SOCKS_PORT, value)
+    var localSocks5Auth by configurationStore.boolean(Key.LOCAL_SOCKS5_AUTH) { true }
+    var localSocks5Username by configurationStore.string(Key.LOCAL_SOCKS5_USERNAME)
+    var localSocks5Password by configurationStore.string(Key.LOCAL_SOCKS5_PASSWORD)
+    var localSocks5Udp by configurationStore.boolean(Key.LOCAL_SOCKS5_UDP)
     var localDNSPort: Int
         get() = getLocalPort(Key.LOCAL_DNS_PORT, 6450)
         set(value) {
@@ -198,6 +206,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
         set(value) = saveLocalPort(Key.TRANSPROXY_PORT, value)
 
     fun initGlobal() {
+        ensureLocalProxyAuthSecrets()
         if (configurationStore.getString(Key.SOCKS_PORT) == null) {
             socksPort = socksPort
         }
@@ -239,6 +248,12 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var proxyApps by configurationStore.boolean(Key.PROXY_APPS)
     var bypass by configurationStore.boolean(Key.BYPASS_MODE) { true }
     var individual by configurationStore.string(Key.INDIVIDUAL)
+    var privacyBadApps by configurationStore.string(Key.PRIVACY_BAD_APPS)
+    var privacyForceLoopbackBind by configurationStore.boolean(Key.PRIVACY_FORCE_LOOPBACK_BIND) { true }
+    var privacyBlockHttpProxyInVpnMode by configurationStore.boolean(Key.PRIVACY_BLOCK_HTTP_PROXY_IN_VPN) { true }
+    var privacyHardenCustomConfigs by configurationStore.boolean(Key.PRIVACY_HARDEN_CUSTOM_CONFIGS) { true }
+    var privacyBlockVpnBypassApi by configurationStore.boolean(Key.PRIVACY_BLOCK_VPN_BYPASS_API) { true }
+    var privacyBlockDebugListeners by configurationStore.boolean(Key.PRIVACY_BLOCK_DEBUG_LISTENERS) { true }
     var showDirectSpeed by configurationStore.boolean(Key.SHOW_DIRECT_SPEED)
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT)
@@ -444,6 +459,28 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     var experimentalFlagsProperties = Properties().apply {
         load(BufferedReader(StringReader(experimentalFlags)))
+    }
+
+    fun canUseInternalSocks5(): Boolean {
+        return !localSocks5Auth
+    }
+
+    private fun ensureLocalProxyAuthSecrets() {
+        if (localSocks5Username.isNullOrBlank()) {
+            localSocks5Username = generateToken(12)
+        }
+        if (localSocks5Password.isNullOrBlank()) {
+            localSocks5Password = generateToken(24)
+        }
+    }
+
+    private fun generateToken(length: Int): String {
+        val alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        return buildString(length) {
+            repeat(length) {
+                append(alphabet[localAuthRandom.nextInt(alphabet.length)])
+            }
+        }
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {

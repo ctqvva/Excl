@@ -223,6 +223,8 @@
         <activity
             android:name="io.nekohasekai.sagernet.ui.AppListActivity" />
         <activity
+            android:name="io.nekohasekai.sagernet.ui.PrivacyAppListActivity" />
+        <activity
             android:name="com.github.shadowsocks.plugin.v2ray.ConfigActivity" />
         <activity
             android:name="com.github.shadowsocks.plugin.obfs_local.ConfigActivity" />

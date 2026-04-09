@@ -102,7 +102,11 @@ class SagerNet : Application(),
 
         if (!isMainProcess) {
             Libsagernetcore.setUidDumper(this, Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
-            if (DataStore.enableDebug && DataStore.pprofServer.isNotEmpty()) {
+            if (
+                DataStore.enableDebug &&
+                DataStore.pprofServer.isNotEmpty() &&
+                !DataStore.privacyBlockDebugListeners
+            ) {
                 DebugInstance().launch()
             }
         }

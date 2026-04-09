@@ -40,6 +40,7 @@ import io.nekohasekai.sagernet.Key.MODE_VPN
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.preference.EditTextPreferenceModifiers
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.ui.profile.ProfileSettingsActivity.PasswordSummaryProvider
 import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.utils.Theme
 import io.nekohasekai.sagernet.widget.ColorPickerPreference
@@ -51,6 +52,7 @@ import java.util.Locale
 class SettingsPreferenceFragment : PreferenceFragmentCompat() {
 
     private lateinit var isProxyApps: SwitchPreference
+    private lateinit var privacyBadApps: Preference
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -74,6 +76,25 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
     val reloadListener = Preference.OnPreferenceChangeListener { _, _ ->
         needReload()
         true
+    }
+
+    private fun buildPackageSummary(packagesRaw: String): CharSequence {
+        PackageCache.awaitLoadSync()
+        val packages = packagesRaw.split("\n").filter { it.isNotEmpty() }.map {
+            PackageCache.installedPackages[it]?.applicationInfo?.loadLabel(app.packageManager) ?: it
+        }
+        if (packages.isEmpty()) {
+            return getString(androidx.preference.R.string.not_set)
+        }
+        val count = packages.size
+        if (count <= 5) return packages.joinToString("\n")
+        return resources.getQuantityString(R.plurals.apps_message, count, count)
+    }
+
+    private fun updatePrivacyBadAppsSummary() {
+        if (::privacyBadApps.isInitialized) {
+            privacyBadApps.summary = buildPackageSummary(DataStore.privacyBadApps)
+        }
     }
 
     override fun onCreatePreferencesFix(savedInstanceState: Bundle?, rootKey: String?) {
@@ -156,15 +177,23 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             tunImplementation.isEnabled = newValue == MODE_VPN
             mtu.isEnabled = newValue == MODE_VPN
             enableVPNInterfaceIPv6Address.isEnabled = newValue == MODE_VPN
-            allowAppsBypassVpn.isEnabled = newValue == MODE_VPN
+            allowAppsBypassVpn.isEnabled =
+                newValue == MODE_VPN && !DataStore.privacyBlockVpnBypassApi
             discardICMP.isEnabled = newValue == MODE_VPN
             meteredNetwork.isEnabled = newValue == MODE_VPN
             enablePcap.isEnabled = newValue == MODE_VPN && tunImplementation.value == "${TunImplementation.GVISOR}"
             appTrafficStatistics.isEnabled = newValue == MODE_VPN
             isProxyApps.isEnabled = newValue == MODE_VPN
             bypassLan.isEnabled = newValue == MODE_VPN
-            appendHttpProxy.isEnabled = requireHttp.isChecked && newValue == MODE_VPN
-            httpProxyException.isEnabled = requireHttp.isChecked && newValue == MODE_VPN && appendHttpProxy.isChecked
+            appendHttpProxy.isEnabled =
+                requireHttp.isChecked &&
+                    newValue == MODE_VPN &&
+                    !DataStore.privacyBlockHttpProxyInVpnMode
+            httpProxyException.isEnabled =
+                requireHttp.isChecked &&
+                    newValue == MODE_VPN &&
+                    appendHttpProxy.isChecked &&
+                    !DataStore.privacyBlockHttpProxyInVpnMode
             if (SagerNet.started) {
                 SagerNet.stopService()
                 runOnMainDispatcher {
@@ -190,7 +219,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         mtu.onPreferenceChangeListener = reloadListener
         enableVPNInterfaceIPv6Address.isEnabled = serviceMode.value == MODE_VPN
         enableVPNInterfaceIPv6Address.onPreferenceChangeListener = reloadListener
-        allowAppsBypassVpn.isEnabled = serviceMode.value == MODE_VPN
+        allowAppsBypassVpn.isEnabled =
+            serviceMode.value == MODE_VPN && !DataStore.privacyBlockVpnBypassApi
         allowAppsBypassVpn.onPreferenceChangeListener = reloadListener
         if (Build.VERSION.SDK_INT < 28) {
             meteredNetwork.remove()
@@ -319,6 +349,53 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         rulesGeositeUrl.isVisible = DataStore.rulesProvider == 3
         rulesGeoipUrl.isVisible = DataStore.rulesProvider == 3
 
+        // privacy settings
+        val localSocks5Auth = findPreference<SwitchPreference>(Key.LOCAL_SOCKS5_AUTH)!!
+        val localSocks5Username = findPreference<EditTextPreference>(Key.LOCAL_SOCKS5_USERNAME)!!
+        val localSocks5Password = findPreference<EditTextPreference>(Key.LOCAL_SOCKS5_PASSWORD)!!
+        val localSocks5Udp = findPreference<SwitchPreference>(Key.LOCAL_SOCKS5_UDP)!!
+        privacyBadApps = findPreference<Preference>(Key.PRIVACY_BAD_APPS)!!
+        val privacyForceLoopbackBind =
+            findPreference<SwitchPreference>(Key.PRIVACY_FORCE_LOOPBACK_BIND)!!
+        val privacyBlockHttpProxyInVpnMode =
+            findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_HTTP_PROXY_IN_VPN)!!
+        val privacyHardenCustomConfigs =
+            findPreference<SwitchPreference>(Key.PRIVACY_HARDEN_CUSTOM_CONFIGS)!!
+        val privacyBlockVpnBypassApi =
+            findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_VPN_BYPASS_API)!!
+        val privacyBlockDebugListeners =
+            findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_DEBUG_LISTENERS)!!
+
+        localSocks5Password.summaryProvider = PasswordSummaryProvider
+        fun updateLocalSocks5Auth(enabled: Boolean) {
+            localSocks5Username.isVisible = enabled
+            localSocks5Password.isVisible = enabled
+        }
+        updateLocalSocks5Auth(localSocks5Auth.isChecked)
+        localSocks5Auth.setOnPreferenceChangeListener { _, newValue ->
+            updateLocalSocks5Auth(newValue as Boolean)
+            needReload()
+            true
+        }
+        localSocks5Username.onPreferenceChangeListener = reloadListener
+        localSocks5Password.onPreferenceChangeListener = reloadListener
+        localSocks5Udp.onPreferenceChangeListener = reloadListener
+        privacyBadApps.setOnPreferenceClickListener {
+            startActivity(Intent(activity, PrivacyAppListActivity::class.java))
+            true
+        }
+        updatePrivacyBadAppsSummary()
+        privacyForceLoopbackBind.onPreferenceChangeListener = reloadListener
+        privacyBlockHttpProxyInVpnMode.onPreferenceChangeListener = reloadListener
+        privacyHardenCustomConfigs.onPreferenceChangeListener = reloadListener
+        privacyBlockVpnBypassApi.setOnPreferenceChangeListener { _, newValue ->
+            allowAppsBypassVpn.isEnabled =
+                serviceMode.value == MODE_VPN && !(newValue as Boolean)
+            needReload()
+            true
+        }
+        privacyBlockDebugListeners.onPreferenceChangeListener = reloadListener
+
         // protocol settings
         val enableFragment = findPreference<SwitchPreference>(Key.ENABLE_FRAGMENT)!!
         val enableFragmentForDirect = findPreference<SwitchPreference>(Key.ENABLE_FRAGMENT_FOR_DIRECT)!!
@@ -367,7 +444,17 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>(Key.ENABLE_FAKEDNS)!!.onPreferenceChangeListener = reloadListener
 
         // inbound settings
-        findPreference<SwitchPreference>(Key.ALLOW_ACCESS)!!.onPreferenceChangeListener = reloadListener
+        val allowAccess = findPreference<SwitchPreference>(Key.ALLOW_ACCESS)!!
+        fun updateAllowAccessState(forceLoopback: Boolean) {
+            allowAccess.isEnabled = !forceLoopback
+        }
+        updateAllowAccessState(privacyForceLoopbackBind.isChecked)
+        allowAccess.onPreferenceChangeListener = reloadListener
+        privacyForceLoopbackBind.setOnPreferenceChangeListener { _, newValue ->
+            updateAllowAccessState(newValue as Boolean)
+            needReload()
+            true
+        }
 
         val portSocks5 = findPreference<EditTextPreference>(Key.SOCKS_PORT)!!
         portSocks5.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
@@ -386,20 +473,36 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             appendHttpProxy.remove()
             httpProxyException.remove()
         } else {
+            fun updateHttpProxyPrefs(blockInVpn: Boolean) {
+                val enableHttpProxySettings =
+                    requireHttp.isChecked &&
+                        serviceMode.value == MODE_VPN &&
+                        !blockInVpn
+                appendHttpProxy.isEnabled = enableHttpProxySettings
+                httpProxyException.isEnabled =
+                    enableHttpProxySettings && appendHttpProxy.isChecked
+            }
             requireHttp.setOnPreferenceChangeListener { _, newValue ->
                 portHttp.isEnabled = newValue as Boolean
-                appendHttpProxy.isEnabled = newValue && serviceMode.value == MODE_VPN
-                httpProxyException.isEnabled = newValue && serviceMode.value == MODE_VPN && appendHttpProxy.isChecked
+                updateHttpProxyPrefs(privacyBlockHttpProxyInVpnMode.isChecked)
                 needReload()
                 true
             }
-            appendHttpProxy.isEnabled = requireHttp.isChecked && serviceMode.value == MODE_VPN
+            updateHttpProxyPrefs(privacyBlockHttpProxyInVpnMode.isChecked)
             appendHttpProxy.setOnPreferenceChangeListener { _, newValue ->
-                httpProxyException.isEnabled = newValue as Boolean
+                httpProxyException.isEnabled =
+                    newValue as Boolean &&
+                        requireHttp.isChecked &&
+                        serviceMode.value == MODE_VPN &&
+                        !privacyBlockHttpProxyInVpnMode.isChecked
                 needReload()
                 true
             }
-            httpProxyException.isEnabled = requireHttp.isChecked && serviceMode.value == MODE_VPN && appendHttpProxy.isChecked
+            privacyBlockHttpProxyInVpnMode.setOnPreferenceChangeListener { _, newValue ->
+                updateHttpProxyPrefs(newValue as Boolean)
+                needReload()
+                true
+            }
             httpProxyException.onPreferenceChangeListener = reloadListener
         }
 
@@ -451,6 +554,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         if (::isProxyApps.isInitialized) {
             isProxyApps.isChecked = DataStore.proxyApps
         }
+        updatePrivacyBadAppsSummary()
     }
 
 }

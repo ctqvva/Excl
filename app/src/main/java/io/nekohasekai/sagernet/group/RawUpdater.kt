@@ -68,7 +68,7 @@ object RawUpdater : GroupUpdater() {
                 ?: error(app.getString(R.string.no_proxies_found_in_subscription))
         } else {
             val response = Libsagernetcore.newHttpClient().apply {
-                if (SagerNet.started && DataStore.startedProfile > 0) {
+                if (SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5()) {
                     useSocks5(DataStore.socksPort)
                 }
             }.newRequest().apply {

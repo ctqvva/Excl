@@ -116,7 +116,7 @@ class StunActivity : ThemedActivity() {
         runOnDefaultDispatcher {
             val result = Libsagernetcore.stunTest(
                 binding.natStunServer.text.toString(),
-                SagerNet.started && DataStore.startedProfile > 0,
+                SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
                 DataStore.socksPort,
                 if (DataStore.requireDnsInbound) DataStore.localDNSPort else 0
@@ -147,7 +147,7 @@ class StunActivity : ThemedActivity() {
         runOnDefaultDispatcher {
             val result = Libsagernetcore.stunLegacyTest(
                 binding.natStunServer.text.toString(),
-                SagerNet.started && DataStore.startedProfile > 0,
+                SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
                 DataStore.socksPort,
                 if (DataStore.requireDnsInbound) DataStore.localDNSPort else 0

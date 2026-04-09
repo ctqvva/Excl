@@ -206,6 +206,65 @@
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/privacy_settings">
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_lock_24"
+            app:key="localSocks5Auth"
+            app:summary="@string/local_socks5_auth_sum"
+            app:title="@string/local_socks5_auth" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_person_24"
+            app:key="localSocks5Username"
+            app:title="@string/username"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_settings_password"
+            app:key="localSocks5Password"
+            app:title="@string/password"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_compare_arrows_24"
+            app:key="localSocks5Udp"
+            app:summary="@string/local_socks5_udp_sum"
+            app:title="@string/local_socks5_udp" />
+        <Preference
+            app:icon="@drawable/ic_navigation_apps"
+            app:key="privacyBadApps"
+            app:title="@string/privacy_bad_apps" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_lock_24"
+            app:key="privacyForceLoopbackBind"
+            app:summary="@string/privacy_force_loopback_bind_sum"
+            app:title="@string/privacy_force_loopback_bind" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_http_24"
+            app:key="privacyBlockHttpProxyInVpnMode"
+            app:summary="@string/privacy_block_http_proxy_in_vpn_sum"
+            app:title="@string/privacy_block_http_proxy_in_vpn" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="privacyHardenCustomConfigs"
+            app:summary="@string/privacy_harden_custom_configs_sum"
+            app:title="@string/privacy_harden_custom_configs" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_lock_24"
+            app:key="privacyBlockVpnBypassApi"
+            app:summary="@string/privacy_block_vpn_bypass_api_sum"
+            app:title="@string/privacy_block_vpn_bypass_api" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="privacyBlockDebugListeners"
+            app:summary="@string/privacy_block_debug_listeners_sum"
+            app:title="@string/privacy_block_debug_listeners" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/protocol_settings">
         <io.nekohasekai.sagernet.widget.LinkPreference
             app:defaultValue="https://www.google.com/generate_204"

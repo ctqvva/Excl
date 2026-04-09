@@ -257,8 +257,14 @@ fun buildV2RayConfig(
         })) to it.resolveChain()
     }
 
-    val allowAccess = DataStore.allowAccess
+    val allowAccess = DataStore.allowAccess && !DataStore.privacyForceLoopbackBind
     val bind = if (!forTest && allowAccess) "0.0.0.0" else LOCALHOST
+    val localSocks5Auth = !forTest && DataStore.localSocks5Auth
+    val localSocks5Username = DataStore.localSocks5Username
+    val localSocks5Password = DataStore.localSocks5Password
+    val localSocks5Udp = DataStore.localSocks5Udp
+    val blockHttpProxyInVpnMode =
+        !forTest && DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockHttpProxyInVpnMode
 
     var directDNS = DataStore.directDns.listByLineOrComma().filter { !it.startsWith("#") }
     if (DataStore.useLocalDnsAsDirectDns) directDNS = listOf("localhost")
@@ -276,7 +282,7 @@ fun buildV2RayConfig(
     val indexMap = ArrayList<IndexEntity>()
     var requireWs = false
     var requireSh = false
-    val requireHttp = !forTest && DataStore.requireHttp
+    val requireHttp = !forTest && DataStore.requireHttp && !blockHttpProxyInVpnMode
     val requireTransproxy = if (forTest) false else DataStore.requireTransproxy
     val destinationOverride = DataStore.destinationOverride
     val trafficStatistics = !forTest && DataStore.profileTrafficStatistics
@@ -355,8 +361,16 @@ fun buildV2RayConfig(
             protocol = "socks"
             settings = LazyInboundConfigurationObject(this,
                 SocksInboundConfigurationObject().apply {
-                    auth = "noauth"
-                    udp = true
+                    if (localSocks5Auth) {
+                        auth = "password"
+                        accounts = listOf(SocksInboundConfigurationObject.AccountObject().apply {
+                            user = localSocks5Username
+                            pass = localSocks5Password
+                        })
+                    } else {
+                        auth = "noauth"
+                    }
+                    udp = localSocks5Udp
                 })
             if (trafficSniffing || useFakeDns) {
                 sniffing = InboundObject.SniffingObject().apply {
@@ -2639,12 +2653,87 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
 
     val bind = LOCALHOST
     val trafficSniffing = DataStore.trafficSniffing
+    val localSocks5Auth = DataStore.localSocks5Auth
+    val localSocks5Username = DataStore.localSocks5Username
+    val localSocks5Password = DataStore.localSocks5Password
+    val localSocks5Udp = DataStore.localSocks5Udp
+    val hardenCustomConfigs = DataStore.privacyHardenCustomConfigs
+    val blockHttpProxyInVpnMode =
+        DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockHttpProxyInVpnMode
 
     val bean = proxy.configBean!!
     val config = parseJson(bean.content, lenient = true).asJsonObject
     val inbounds = config.getArray("inbounds")
         ?.map { gson.fromJson(it.toString(), InboundObject::class.java) }
         ?.toMutableList() ?: ArrayList()
+
+    if (hardenCustomConfigs && config.get("api") != null) {
+        config.remove("api")
+    }
+
+    fun configureSocksInbound(inbound: InboundObject) {
+        val current = inbound.settings?.value as? SocksInboundConfigurationObject
+            ?: SocksInboundConfigurationObject()
+        if (localSocks5Auth) {
+            current.auth = "password"
+            current.accounts = listOf(SocksInboundConfigurationObject.AccountObject().apply {
+                user = localSocks5Username
+                pass = localSocks5Password
+            })
+        } else {
+            current.auth = "noauth"
+            current.accounts = null
+        }
+        current.udp = localSocks5Udp
+        inbound.settings = LazyInboundConfigurationObject(inbound, current)
+    }
+
+    fun configureMixedInbound(inbound: InboundObject) {
+        val current = inbound.settings?.value as? V2RayConfig.MixedInboundConfigurationObject
+            ?: V2RayConfig.MixedInboundConfigurationObject()
+        if (localSocks5Auth) {
+            current.auth = "password"
+            current.accounts =
+                listOf(V2RayConfig.MixedInboundConfigurationObject.AccountObject().apply {
+                    user = localSocks5Username
+                    pass = localSocks5Password
+                })
+        } else {
+            current.auth = "noauth"
+            current.accounts = null
+        }
+        current.udp = localSocks5Udp
+        inbound.settings = LazyInboundConfigurationObject(inbound, current)
+    }
+
+    inbounds.removeAll { inbound ->
+        inbound.init()
+        if (hardenCustomConfigs && inbound.protocol?.lowercase() != "tun") {
+            inbound.listen = bind
+        }
+        when (inbound.protocol?.lowercase()) {
+            "socks" -> {
+                if (hardenCustomConfigs) {
+                    configureSocksInbound(inbound)
+                }
+                false
+            }
+            "mixed" -> {
+                if (hardenCustomConfigs) {
+                    configureMixedInbound(inbound)
+                }
+                false
+            }
+            "http" -> {
+                if (blockHttpProxyInVpnMode) {
+                    true
+                } else {
+                    false
+                }
+            }
+            else -> false
+        }
+    }
 
     var socksInbound = inbounds.find { it.tag == TAG_SOCKS }?.apply {
         if (protocol != "socks") error("Inbound $tag with type $protocol, excepted socks.")
@@ -2662,6 +2751,9 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
             listen = bind
             this.port = port
         }
+        if (hardenCustomConfigs) {
+            configureSocksInbound(socksInbound!!)
+        }
     } else {
         inbounds.add(InboundObject().apply {
             tag = TAG_SOCKS
@@ -2670,8 +2762,16 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
             protocol = "socks"
             settings = LazyInboundConfigurationObject(this,
                 SocksInboundConfigurationObject().apply {
-                    auth = "noauth"
-                    udp = true
+                    if (localSocks5Auth) {
+                        auth = "password"
+                        accounts = listOf(SocksInboundConfigurationObject.AccountObject().apply {
+                            user = localSocks5Username
+                            pass = localSocks5Password
+                        })
+                    } else {
+                        auth = "noauth"
+                    }
+                    udp = localSocks5Udp
                 })
             if (trafficSniffing) {
                 sniffing = InboundObject.SniffingObject().apply {

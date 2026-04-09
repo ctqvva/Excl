@@ -235,6 +235,11 @@ class VpnService : BaseVpnService(),
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(metered)
 
         val packageName = packageName
+        val privacyBadApps = DataStore.privacyBadApps
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it != packageName }
+            .toSet()
         val proxyApps = DataStore.proxyApps
         val tunImplementation = DataStore.tunImplementation
         val needIncludeSelf = tunImplementation == TunImplementation.SYSTEM
@@ -242,6 +247,11 @@ class VpnService : BaseVpnService(),
             val bypass = DataStore.bypass
             val individual = mutableSetOf<String>()
             individual.addAll(DataStore.individual.split('\n').filter { it.isNotEmpty() })
+            if (bypass) {
+                individual.addAll(privacyBadApps)
+            } else {
+                individual.removeAll(privacyBadApps)
+            }
             individual.apply {
                 if (bypass xor needIncludeSelf) add(packageName) else remove(packageName)
             }.forEach {
@@ -258,6 +268,15 @@ class VpnService : BaseVpnService(),
         } else if (!needIncludeSelf) {
             builder.addDisallowedApplication(packageName)
         }
+        if (!proxyApps) {
+            privacyBadApps.forEach {
+                try {
+                    builder.addDisallowedApplication(it)
+                } catch (ex: PackageManager.NameNotFoundException) {
+                    Logs.w(ex)
+                }
+            }
+        }
 
         if (PRIVATE_VLAN4_DNS.isNotEmpty()) {
             builder.addDnsServer(PRIVATE_VLAN4_DNS)
@@ -266,7 +285,12 @@ class VpnService : BaseVpnService(),
             builder.addDnsServer(PRIVATE_VLAN6_DNS)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && DataStore.appendHttpProxy && DataStore.requireHttp) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            DataStore.appendHttpProxy &&
+            DataStore.requireHttp &&
+            !DataStore.privacyBlockHttpProxyInVpnMode
+        ) {
             if (DataStore.httpProxyException.isNotEmpty()) {
                 builder.setHttpProxy(ProxyInfo.buildDirectProxy(LOCALHOST, DataStore.httpPort,
                     DataStore.httpProxyException.listByLineOrComma()))
@@ -278,7 +302,7 @@ class VpnService : BaseVpnService(),
         metered = DataStore.meteredNetwork
         if (Build.VERSION.SDK_INT >= 29) builder.setMetered(metered)
 
-        if (DataStore.allowAppsBypassVpn) {
+        if (DataStore.allowAppsBypassVpn && !DataStore.privacyBlockVpnBypassApi) {
             builder.allowBypass()
         }
 

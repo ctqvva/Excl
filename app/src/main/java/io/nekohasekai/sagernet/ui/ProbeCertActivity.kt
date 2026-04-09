@@ -205,7 +205,7 @@ class ProbeCertActivity : ThemedActivity() {
                     1 -> "quic"
                     else -> error("impossible")
                 },
-                SagerNet.started && DataStore.startedProfile > 0,
+                SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
                 DataStore.socksPort
             )
             onMainDispatcher {
