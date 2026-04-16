@@ -10,6 +10,10 @@
         android:title="@string/invert_selections"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_add_recommended_apps"
+        android:title="@string/privacy_bad_apps_add_recommended"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_clear_selections"
         android:title="@string/clear_selections"
         app:showAsAction="never" />

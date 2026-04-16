@@ -225,6 +225,12 @@
             app:title="@string/password"
             app:useSimpleSummaryProvider="true" />
         <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_http_24"
+            app:key="privacyRequireHttpInboundAuth"
+            app:summary="@string/privacy_require_http_auth_sum"
+            app:title="@string/privacy_require_http_auth" />
+        <SwitchPreference
             app:icon="@drawable/ic_baseline_compare_arrows_24"
             app:key="localSocks5Udp"
             app:summary="@string/local_socks5_udp_sum"
@@ -247,10 +253,28 @@
             app:title="@string/privacy_block_http_proxy_in_vpn" />
         <SwitchPreference
             app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_compare_arrows_24"
+            app:key="privacyBlockTransproxyInVpnMode"
+            app:summary="@string/privacy_block_transproxy_in_vpn_sum"
+            app:title="@string/privacy_block_transproxy_in_vpn" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_dns"
+            app:key="privacyBlockDnsInboundInVpnMode"
+            app:summary="@string/privacy_block_dns_in_vpn_sum"
+            app:title="@string/privacy_block_dns_in_vpn" />
+        <SwitchPreference
+            app:defaultValue="true"
             app:icon="@drawable/ic_baseline_bug_report_24"
             app:key="privacyHardenCustomConfigs"
             app:summary="@string/privacy_harden_custom_configs_sum"
             app:title="@string/privacy_harden_custom_configs" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="privacyRejectUnsafeCustomConfigs"
+            app:summary="@string/privacy_reject_unsafe_custom_configs_sum"
+            app:title="@string/privacy_reject_unsafe_custom_configs" />
         <SwitchPreference
             app:defaultValue="true"
             app:icon="@drawable/ic_baseline_lock_24"
@@ -263,6 +287,21 @@
             app:key="privacyBlockDebugListeners"
             app:summary="@string/privacy_block_debug_listeners_sum"
             app:title="@string/privacy_block_debug_listeners" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_manage_search_24"
+            app:key="privacyHoneypotEnabled"
+            app:summary="@string/privacy_honeypot_sum"
+            app:title="@string/privacy_honeypot" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_compare_arrows_24"
+            app:key="privacyHoneypotPorts"
+            app:summary="@string/privacy_honeypot_ports_sum"
+            app:title="@string/privacy_honeypot_ports"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            app:icon="@drawable/ic_baseline_manage_search_24"
+            app:key="privacyHoneypotLog"
+            app:title="@string/privacy_honeypot_logs" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/protocol_settings">

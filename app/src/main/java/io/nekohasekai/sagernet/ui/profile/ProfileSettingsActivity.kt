@@ -220,6 +220,7 @@ abstract class ProfileSettingsActivity<T : AbstractBean>(
                     .setIntent(Intent(this, QuickToggleShortcut::class.java).apply {
                             action = Intent.ACTION_MAIN
                             putExtra("profile", entity.id)
+                            putExtra(QuickToggleShortcut.EXTRA_CONTROL_TOKEN, DataStore.privacyControlToken)
                         }
                     ).build()
                 ShortcutManagerCompat.requestPinShortcut(this, shortcut, null)

@@ -36,22 +36,39 @@ import io.nekohasekai.sagernet.database.DataStore
 
 @Suppress("DEPRECATION")
 class QuickToggleShortcut : Activity(), SagerConnection.Callback {
+    companion object {
+        const val EXTRA_CONTROL_TOKEN = "controlToken"
+    }
+
     private val connection = SagerConnection()
     private var profileId = -1L
+
+    private fun shortcutIntent(profileId: Long = -1L): Intent {
+        return Intent(this, QuickToggleShortcut::class.java).apply {
+            action = Intent.ACTION_MAIN
+            putExtra(EXTRA_CONTROL_TOKEN, DataStore.privacyControlToken)
+            if (profileId >= 0L) {
+                putExtra("profile", profileId)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (intent.action == Intent.ACTION_CREATE_SHORTCUT) {
             setResult(RESULT_OK, ShortcutManagerCompat.createShortcutResultIntent(this,
                 ShortcutInfoCompat.Builder(this, "toggle")
-                    .setIntent(Intent(this,
-                        QuickToggleShortcut::class.java).setAction(Intent.ACTION_MAIN))
+                    .setIntent(shortcutIntent())
                     .setIcon(IconCompat.createWithResource(this,
                         R.drawable.ic_qu_shadowsocks_launcher))
                     .setShortLabel(getString(R.string.quick_toggle))
                     .build()))
             finish()
         } else {
+            if (intent.getStringExtra(EXTRA_CONTROL_TOKEN) != DataStore.privacyControlToken) {
+                finish()
+                return
+            }
             profileId = intent.getLongExtra("profile", -1L)
             connection.connect(this, this)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {

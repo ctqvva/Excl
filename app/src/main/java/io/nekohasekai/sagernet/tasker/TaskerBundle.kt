@@ -21,6 +21,7 @@ package io.nekohasekai.sagernet.tasker
 import android.content.Intent
 import android.os.Bundle
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProfileManager
 import io.nekohasekai.sagernet.ktx.app
 
@@ -35,6 +36,7 @@ class TaskerBundle(val bundle: Bundle) {
         const val ACTION_STOP = 1
 
         const val KEY_PROFILE_ID = "profile"
+        const val KEY_CONTROL_TOKEN = "controlToken"
 
         const val EXTRA_STRING_BLURB = "com.twofortyfouram.locale.intent.extra.BLURB"
 
@@ -51,6 +53,12 @@ class TaskerBundle(val bundle: Bundle) {
         get() = bundle.getLong(KEY_PROFILE_ID, -1L)
         set(value) {
             bundle.putLong(KEY_PROFILE_ID, value)
+        }
+
+    var controlToken: String
+        get() = bundle.getString(KEY_CONTROL_TOKEN).orEmpty()
+        set(value) {
+            bundle.putString(KEY_CONTROL_TOKEN, value)
         }
 
 
@@ -74,6 +82,7 @@ class TaskerBundle(val bundle: Bundle) {
                 blurb = app.getString(R.string.tasker_action_stop_service)
             }
         }
+        bundle.putString(KEY_CONTROL_TOKEN, DataStore.privacyControlToken)
         return Intent().apply {
             putExtra(EXTRA_BUNDLE, bundle)
             putExtra(EXTRA_STRING_BLURB, blurb)

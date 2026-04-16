@@ -54,6 +54,7 @@ import io.nekohasekai.sagernet.databinding.LayoutAppsItemBinding
 import io.nekohasekai.sagernet.ktx.crossFadeFrom
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import io.nekohasekai.sagernet.privacy.PrivacyDefaults
 import io.nekohasekai.sagernet.utils.PackageCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -199,6 +200,22 @@ class PrivacyAppListActivity : ThemedActivity() {
 
     private fun isProtectedApp(app: ProtectedApp) = protectedUids[app.uid]
 
+    private fun applySuggestedSelections(): Int {
+        val suggested = PrivacyDefaults.suggestedBadActorPackages(
+            cachedApps,
+            packageManager,
+        )
+        if (suggested.isEmpty()) return 0
+        val current = DataStore.privacyBadApps.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+        val merged = PrivacyDefaults.mergeBadActorPackages(DataStore.privacyBadApps, suggested)
+        DataStore.privacyBadApps = merged
+        initProtectedUids(merged)
+        return suggested.count { it !in current }
+    }
+
     @UiThread
     private fun loadApps() {
         loader?.cancel()
@@ -259,6 +276,22 @@ class PrivacyAppListActivity : ThemedActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.action_add_recommended_apps -> {
+                runOnDefaultDispatcher {
+                    val added = applySuggestedSelections()
+                    apps = apps.sortedWith(compareBy({ !isProtectedApp(it) }, { it.name.toString() }))
+                    onMainDispatcher {
+                        appsAdapter.filter.filter("")
+                        Snackbar.make(
+                            binding.list,
+                            if (added > 0) R.string.privacy_bad_apps_recommended_added
+                            else R.string.privacy_bad_apps_no_recommended,
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                return true
+            }
             R.id.action_invert_selections -> {
                 runOnDefaultDispatcher {
                     for (app in apps) {

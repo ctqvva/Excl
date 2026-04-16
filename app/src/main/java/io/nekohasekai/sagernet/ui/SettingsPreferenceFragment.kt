@@ -40,6 +40,7 @@ import io.nekohasekai.sagernet.Key.MODE_VPN
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.preference.EditTextPreferenceModifiers
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.privacy.PrivacyHoneypot
 import io.nekohasekai.sagernet.ui.profile.ProfileSettingsActivity.PasswordSummaryProvider
 import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.utils.Theme
@@ -53,6 +54,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
 
     private lateinit var isProxyApps: SwitchPreference
     private lateinit var privacyBadApps: Preference
+    private lateinit var privacyHoneypotLogs: Preference
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -94,6 +96,25 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
     private fun updatePrivacyBadAppsSummary() {
         if (::privacyBadApps.isInitialized) {
             privacyBadApps.summary = buildPackageSummary(DataStore.privacyBadApps)
+        }
+    }
+
+    private fun updatePrivacyHoneypotSummary() {
+        if (!::privacyHoneypotLogs.isInitialized) return
+        val latest = PrivacyHoneypot.parseLog().firstOrNull()
+        privacyHoneypotLogs.summary = if (latest == null) {
+            getString(R.string.privacy_honeypot_logs_empty)
+        } else {
+            PackageCache.awaitLoadSync()
+            val label = latest.packageName?.let {
+                PackageCache.installedPackages[it]?.applicationInfo?.loadLabel(app.packageManager) ?: it
+            } ?: getString(androidx.preference.R.string.not_set)
+            getString(
+                R.string.privacy_honeypot_logs_summary,
+                label,
+                latest.localPort,
+                latest.classification,
+            )
         }
     }
 
@@ -357,23 +378,42 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         privacyBadApps = findPreference<Preference>(Key.PRIVACY_BAD_APPS)!!
         val privacyForceLoopbackBind =
             findPreference<SwitchPreference>(Key.PRIVACY_FORCE_LOOPBACK_BIND)!!
+        val privacyRequireHttpInboundAuth =
+            findPreference<SwitchPreference>(Key.PRIVACY_REQUIRE_HTTP_AUTH)!!
         val privacyBlockHttpProxyInVpnMode =
             findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_HTTP_PROXY_IN_VPN)!!
+        val privacyBlockTransproxyInVpnMode =
+            findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_TRANSPROXY_IN_VPN)!!
+        val privacyBlockDnsInboundInVpnMode =
+            findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_DNS_IN_VPN)!!
         val privacyHardenCustomConfigs =
             findPreference<SwitchPreference>(Key.PRIVACY_HARDEN_CUSTOM_CONFIGS)!!
+        val privacyRejectUnsafeCustomConfigs =
+            findPreference<SwitchPreference>(Key.PRIVACY_REJECT_UNSAFE_CUSTOM_CONFIGS)!!
         val privacyBlockVpnBypassApi =
             findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_VPN_BYPASS_API)!!
         val privacyBlockDebugListeners =
             findPreference<SwitchPreference>(Key.PRIVACY_BLOCK_DEBUG_LISTENERS)!!
+        val privacyHoneypotEnabled =
+            findPreference<SwitchPreference>(Key.PRIVACY_HONEYPOT_ENABLED)!!
+        val privacyHoneypotPorts =
+            findPreference<EditTextPreference>(Key.PRIVACY_HONEYPOT_PORTS)!!
+        privacyHoneypotLogs = findPreference(Key.PRIVACY_HONEYPOT_LOG)!!
 
         localSocks5Password.summaryProvider = PasswordSummaryProvider
-        fun updateLocalSocks5Auth(enabled: Boolean) {
-            localSocks5Username.isVisible = enabled
-            localSocks5Password.isVisible = enabled
+        fun updateLocalProxyAuthInputs(socksAuthEnabled: Boolean, httpAuthEnabled: Boolean) {
+            val visible = socksAuthEnabled || httpAuthEnabled
+            localSocks5Username.isVisible = visible
+            localSocks5Password.isVisible = visible
         }
-        updateLocalSocks5Auth(localSocks5Auth.isChecked)
+        updateLocalProxyAuthInputs(localSocks5Auth.isChecked, privacyRequireHttpInboundAuth.isChecked)
         localSocks5Auth.setOnPreferenceChangeListener { _, newValue ->
-            updateLocalSocks5Auth(newValue as Boolean)
+            updateLocalProxyAuthInputs(newValue as Boolean, privacyRequireHttpInboundAuth.isChecked)
+            needReload()
+            true
+        }
+        privacyRequireHttpInboundAuth.setOnPreferenceChangeListener { _, newValue ->
+            updateLocalProxyAuthInputs(localSocks5Auth.isChecked, newValue as Boolean)
             needReload()
             true
         }
@@ -386,8 +426,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         }
         updatePrivacyBadAppsSummary()
         privacyForceLoopbackBind.onPreferenceChangeListener = reloadListener
-        privacyBlockHttpProxyInVpnMode.onPreferenceChangeListener = reloadListener
+        privacyBlockTransproxyInVpnMode.onPreferenceChangeListener = reloadListener
+        privacyBlockDnsInboundInVpnMode.onPreferenceChangeListener = reloadListener
         privacyHardenCustomConfigs.onPreferenceChangeListener = reloadListener
+        privacyRejectUnsafeCustomConfigs.onPreferenceChangeListener = reloadListener
         privacyBlockVpnBypassApi.setOnPreferenceChangeListener { _, newValue ->
             allowAppsBypassVpn.isEnabled =
                 serviceMode.value == MODE_VPN && !(newValue as Boolean)
@@ -395,6 +437,18 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
         privacyBlockDebugListeners.onPreferenceChangeListener = reloadListener
+        privacyHoneypotPorts.isEnabled = privacyHoneypotEnabled.isChecked
+        privacyHoneypotPorts.onPreferenceChangeListener = reloadListener
+        privacyHoneypotEnabled.setOnPreferenceChangeListener { _, newValue ->
+            privacyHoneypotPorts.isEnabled = newValue as Boolean
+            needReload()
+            true
+        }
+        updatePrivacyHoneypotSummary()
+        privacyHoneypotLogs.setOnPreferenceClickListener {
+            startActivity(Intent(activity, PrivacyHoneypotLogActivity::class.java))
+            true
+        }
 
         // protocol settings
         val enableFragment = findPreference<SwitchPreference>(Key.ENABLE_FRAGMENT)!!
@@ -555,6 +609,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             isProxyApps.isChecked = DataStore.proxyApps
         }
         updatePrivacyBadAppsSummary()
+        updatePrivacyHoneypotSummary()
     }
 
 }

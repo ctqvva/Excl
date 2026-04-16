@@ -33,10 +33,12 @@ import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeLi
 import io.nekohasekai.sagernet.database.preference.PublicDatabase
 import io.nekohasekai.sagernet.database.preference.RoomPreferenceDataStore
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.privacy.PrivacyDefaults
+import io.nekohasekai.sagernet.utils.PackageCache
 import java.io.BufferedReader
 import java.io.StringReader
-import java.util.Properties
 import java.security.SecureRandom
+import java.util.Properties
 
 object DataStore : OnPreferenceDataStoreChangeListener {
 
@@ -207,6 +209,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     fun initGlobal() {
         ensureLocalProxyAuthSecrets()
+        ensurePrivacyControlToken()
+        seedPrivacyBadApps()
         if (configurationStore.getString(Key.SOCKS_PORT) == null) {
             socksPort = socksPort
         }
@@ -249,11 +253,20 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var bypass by configurationStore.boolean(Key.BYPASS_MODE) { true }
     var individual by configurationStore.string(Key.INDIVIDUAL)
     var privacyBadApps by configurationStore.string(Key.PRIVACY_BAD_APPS)
+    var privacyBadAppsSeeded by configurationStore.boolean(Key.PRIVACY_BAD_APPS_SEEDED)
     var privacyForceLoopbackBind by configurationStore.boolean(Key.PRIVACY_FORCE_LOOPBACK_BIND) { true }
+    var privacyRequireHttpInboundAuth by configurationStore.boolean(Key.PRIVACY_REQUIRE_HTTP_AUTH) { true }
     var privacyBlockHttpProxyInVpnMode by configurationStore.boolean(Key.PRIVACY_BLOCK_HTTP_PROXY_IN_VPN) { true }
+    var privacyBlockTransproxyInVpnMode by configurationStore.boolean(Key.PRIVACY_BLOCK_TRANSPROXY_IN_VPN) { true }
+    var privacyBlockDnsInboundInVpnMode by configurationStore.boolean(Key.PRIVACY_BLOCK_DNS_IN_VPN) { true }
     var privacyHardenCustomConfigs by configurationStore.boolean(Key.PRIVACY_HARDEN_CUSTOM_CONFIGS) { true }
+    var privacyRejectUnsafeCustomConfigs by configurationStore.boolean(Key.PRIVACY_REJECT_UNSAFE_CUSTOM_CONFIGS) { true }
     var privacyBlockVpnBypassApi by configurationStore.boolean(Key.PRIVACY_BLOCK_VPN_BYPASS_API) { true }
     var privacyBlockDebugListeners by configurationStore.boolean(Key.PRIVACY_BLOCK_DEBUG_LISTENERS) { true }
+    var privacyHoneypotEnabled by configurationStore.boolean(Key.PRIVACY_HONEYPOT_ENABLED)
+    var privacyHoneypotPorts by configurationStore.string(Key.PRIVACY_HONEYPOT_PORTS) { "1080,10808,3128,8080,8888" }
+    var privacyHoneypotLog by configurationStore.string(Key.PRIVACY_HONEYPOT_LOG)
+    var privacyControlToken by configurationStore.string(Key.PRIVACY_CONTROL_TOKEN)
     var showDirectSpeed by configurationStore.boolean(Key.SHOW_DIRECT_SPEED)
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT)
@@ -472,6 +485,25 @@ object DataStore : OnPreferenceDataStoreChangeListener {
         if (localSocks5Password.isNullOrBlank()) {
             localSocks5Password = generateToken(24)
         }
+    }
+
+    private fun ensurePrivacyControlToken() {
+        if (privacyControlToken.isNullOrBlank()) {
+            privacyControlToken = generateToken(32)
+        }
+    }
+
+    private fun seedPrivacyBadApps() {
+        if (privacyBadAppsSeeded) return
+        PackageCache.awaitLoadSync()
+        val suggested = PrivacyDefaults.suggestedBadActorPackages(
+            PackageCache.installedPackages,
+            application.packageManager,
+        )
+        if (suggested.isNotEmpty()) {
+            privacyBadApps = PrivacyDefaults.mergeBadActorPackages(privacyBadApps, suggested)
+        }
+        privacyBadAppsSeeded = true
     }
 
     private fun generateToken(length: Int): String {

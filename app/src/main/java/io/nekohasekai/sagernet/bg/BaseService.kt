@@ -39,6 +39,7 @@ import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.Alerts
 import io.nekohasekai.sagernet.fmt.TAG_SOCKS
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.privacy.PrivacyHoneypot
 import io.nekohasekai.sagernet.plugin.PluginManager
 import io.nekohasekai.sagernet.utils.PackageCache
 import kotlinx.coroutines.*
@@ -388,6 +389,7 @@ class BaseService {
         }
 
         fun killProcesses() {
+            PrivacyHoneypot.stop()
             data.proxy?.close()
             wakeLock?.apply {
                 release()
@@ -447,6 +449,7 @@ class BaseService {
             if (DataStore.acquireWakeLock) {
                 acquireWakeLock()
             }
+            PrivacyHoneypot.start()
         }
 
         fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

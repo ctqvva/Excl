@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.TunImplementation
@@ -114,12 +115,20 @@ class StunActivity : ThemedActivity() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
+            val dnsPort = if (
+                DataStore.requireDnsInbound &&
+                !(DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockDnsInboundInVpnMode)
+            ) {
+                DataStore.localDNSPort
+            } else {
+                0
+            }
             val result = Libsagernetcore.stunTest(
                 binding.natStunServer.text.toString(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
                 DataStore.socksPort,
-                if (DataStore.requireDnsInbound) DataStore.localDNSPort else 0
+                dnsPort
             )
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {
@@ -145,12 +154,20 @@ class StunActivity : ThemedActivity() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
+            val dnsPort = if (
+                DataStore.requireDnsInbound &&
+                !(DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockDnsInboundInVpnMode)
+            ) {
+                DataStore.localDNSPort
+            } else {
+                0
+            }
             val result = Libsagernetcore.stunLegacyTest(
                 binding.natStunServer.text.toString(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
                 SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
                 DataStore.socksPort,
-                if (DataStore.requireDnsInbound) DataStore.localDNSPort else 0
+                dnsPort
             )
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {

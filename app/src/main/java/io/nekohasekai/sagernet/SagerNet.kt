@@ -84,6 +84,7 @@ class SagerNet : Application(),
         System.setProperty(DEBUG_PROPERTY_NAME, DEBUG_PROPERTY_VALUE_ON)
         Thread.setDefaultUncaughtExceptionHandler(CrashHandler)
         DataStore.init()
+        DataStore.initGlobal()
         updateNotificationChannels()
         Seq.setContext(this)
 

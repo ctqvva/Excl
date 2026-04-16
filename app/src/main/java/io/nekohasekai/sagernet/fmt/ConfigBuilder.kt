@@ -263,8 +263,13 @@ fun buildV2RayConfig(
     val localSocks5Username = DataStore.localSocks5Username
     val localSocks5Password = DataStore.localSocks5Password
     val localSocks5Udp = DataStore.localSocks5Udp
+    val requireLocalHttpAuth = !forTest && DataStore.privacyRequireHttpInboundAuth
     val blockHttpProxyInVpnMode =
         !forTest && DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockHttpProxyInVpnMode
+    val blockTransproxyInVpnMode =
+        !forTest && DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockTransproxyInVpnMode
+    val blockDnsInboundInVpnMode =
+        !forTest && DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockDnsInboundInVpnMode
 
     var directDNS = DataStore.directDns.listByLineOrComma().filter { !it.startsWith("#") }
     if (DataStore.useLocalDnsAsDirectDns) directDNS = listOf("localhost")
@@ -283,7 +288,8 @@ fun buildV2RayConfig(
     var requireWs = false
     var requireSh = false
     val requireHttp = !forTest && DataStore.requireHttp && !blockHttpProxyInVpnMode
-    val requireTransproxy = if (forTest) false else DataStore.requireTransproxy
+    val requireTransproxy =
+        if (forTest) false else DataStore.requireTransproxy && !blockTransproxyInVpnMode
     val destinationOverride = DataStore.destinationOverride
     val trafficStatistics = !forTest && DataStore.profileTrafficStatistics
     var hasTagDirect = false
@@ -395,6 +401,12 @@ fun buildV2RayConfig(
                 protocol = "http"
                 settings = LazyInboundConfigurationObject(this,
                     HTTPInboundConfigurationObject().apply {
+                        if (requireLocalHttpAuth) {
+                            accounts = listOf(HTTPInboundConfigurationObject.AccountObject().apply {
+                                user = localSocks5Username
+                                pass = localSocks5Password
+                            })
+                        }
                         allowTransparent = true
                     })
                 if (trafficSniffing || useFakeDns) {
@@ -2305,7 +2317,7 @@ fun buildV2RayConfig(
             protocol = "blackhole"
         })
 
-        if (!forTest && DataStore.requireDnsInbound && DataStore.localDNSPort > 0) {
+        if (!forTest && DataStore.requireDnsInbound && !blockDnsInboundInVpnMode && DataStore.localDNSPort > 0) {
             inbounds.add(InboundObject().apply {
                 tag = TAG_DNS_IN
                 listen = bind
@@ -2657,7 +2669,9 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
     val localSocks5Username = DataStore.localSocks5Username
     val localSocks5Password = DataStore.localSocks5Password
     val localSocks5Udp = DataStore.localSocks5Udp
+    val requireLocalHttpAuth = DataStore.privacyRequireHttpInboundAuth
     val hardenCustomConfigs = DataStore.privacyHardenCustomConfigs
+    val rejectUnsafeCustomConfigs = DataStore.privacyRejectUnsafeCustomConfigs
     val blockHttpProxyInVpnMode =
         DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockHttpProxyInVpnMode
 
@@ -2667,8 +2681,13 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
         ?.map { gson.fromJson(it.toString(), InboundObject::class.java) }
         ?.toMutableList() ?: ArrayList()
 
-    if (hardenCustomConfigs && config.get("api") != null) {
-        config.remove("api")
+    if (config.get("api") != null) {
+        if (rejectUnsafeCustomConfigs) {
+            throw IllegalArgumentException("Custom config API listeners are blocked in privacy mode")
+        }
+        if (hardenCustomConfigs) {
+            config.remove("api")
+        }
     }
 
     fun configureSocksInbound(inbound: InboundObject) {
@@ -2706,12 +2725,40 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
         inbound.settings = LazyInboundConfigurationObject(inbound, current)
     }
 
+    fun configureHttpInbound(inbound: InboundObject) {
+        val current = inbound.settings?.value as? HTTPInboundConfigurationObject
+            ?: HTTPInboundConfigurationObject()
+        if (requireLocalHttpAuth) {
+            current.accounts = listOf(HTTPInboundConfigurationObject.AccountObject().apply {
+                user = localSocks5Username
+                pass = localSocks5Password
+            })
+        } else {
+            current.accounts = null
+        }
+        inbound.settings = LazyInboundConfigurationObject(inbound, current)
+    }
+
+    fun isUnsafeCustomInbound(protocol: String?): Boolean {
+        return when (protocol?.lowercase()) {
+            "tun", "socks", "mixed", "http" -> false
+            null, "" -> true
+            else -> true
+        }
+    }
+
     inbounds.removeAll { inbound ->
         inbound.init()
-        if (hardenCustomConfigs && inbound.protocol?.lowercase() != "tun") {
+        val protocol = inbound.protocol?.lowercase()
+        if (rejectUnsafeCustomConfigs && isUnsafeCustomInbound(protocol)) {
+            throw IllegalArgumentException(
+                "Custom config inbound '$protocol' is blocked in privacy mode"
+            )
+        }
+        if (hardenCustomConfigs && protocol != "tun") {
             inbound.listen = bind
         }
-        when (inbound.protocol?.lowercase()) {
+        when (protocol) {
             "socks" -> {
                 if (hardenCustomConfigs) {
                     configureSocksInbound(inbound)
@@ -2725,6 +2772,9 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
                 false
             }
             "http" -> {
+                if (hardenCustomConfigs) {
+                    configureHttpInbound(inbound)
+                }
                 if (blockHttpProxyInVpnMode) {
                     true
                 } else {

@@ -69,7 +69,7 @@
 
     <application
         android:name="io.nekohasekai.sagernet.SagerNet"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:autoRevokePermissions="allowed"
         android:banner="@mipmap/ic_launcher"
         android:dataExtractionRules="@xml/backup_rules"
@@ -225,6 +225,8 @@
         <activity
             android:name="io.nekohasekai.sagernet.ui.PrivacyAppListActivity" />
         <activity
+            android:name="io.nekohasekai.sagernet.ui.PrivacyHoneypotLogActivity" />
+        <activity
             android:name="com.github.shadowsocks.plugin.v2ray.ConfigActivity" />
         <activity
             android:name="com.github.shadowsocks.plugin.obfs_local.ConfigActivity" />
@@ -351,7 +353,7 @@
         <receiver
             android:name="io.nekohasekai.sagernet.BootReceiver"
             android:enabled="false"
-            android:exported="true"
+            android:exported="false"
             android:process=":bg">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

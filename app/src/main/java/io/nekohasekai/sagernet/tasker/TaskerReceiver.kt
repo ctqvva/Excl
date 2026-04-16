@@ -29,6 +29,9 @@ class TaskerReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val settings = TaskerBundle.fromIntent(intent)
+        if (settings.controlToken != DataStore.privacyControlToken) {
+            return
+        }
         when (settings.action) {
             TaskerBundle.ACTION_START -> {
                 var reload = false
