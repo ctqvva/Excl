@@ -67,6 +67,14 @@ class ServiceNotification(
 
     val trafficStatistics = DataStore.profileTrafficStatistics
     val showDirectSpeed = DataStore.showDirectSpeed
+    private val baseTitle = profileName
+    private val balancerStateListener: (Long, BalancerRuntimeState.Snapshot?) -> Unit =
+        { balancerId, _ ->
+            if (service.data.proxy?.profile?.id == balancerId) {
+                builder.setContentTitle(resolveContentTitle())
+                update()
+            }
+        }
 
     private val callback: ISagerNetServiceCallback by lazy {
         object : ISagerNetServiceCallback.Stub() {
@@ -74,6 +82,7 @@ class ServiceNotification(
             override fun trafficUpdated(profileId: Long, stats: TrafficStats, isCurrent: Boolean) {
                 if (!trafficStatistics || profileId == 0L || !isCurrent) return
                 builder.apply {
+                    setContentTitle(resolveContentTitle())
                     if (showDirectSpeed) {
                         val speedDetail = (service as Context).getString(
                             R.string.speed_detail, service.getString(
@@ -129,10 +138,26 @@ class ServiceNotification(
     }
     private var callbackRegistered = false
 
+    private fun resolveContentTitle(): String {
+        val activeProfileName = service.data.proxy?.profile?.id
+            ?.let { BalancerRuntimeState.get(it) }
+            ?.activeProfileName
+            ?.takeIf { it.isNotBlank() }
+        return if (activeProfileName == null) {
+            baseTitle
+        } else {
+            (service as Context).getString(
+                R.string.connected_profile_via,
+                baseTitle,
+                activeProfileName
+            )
+        }
+    }
+
     private val builder = NotificationCompat.Builder(service as Context, channel)
         .setWhen(0)
         .setTicker(service.getString(R.string.forward_success))
-        .setContentTitle(profileName)
+        .setContentTitle(baseTitle)
         .setOnlyAlertOnce(true)
         .setContentIntent(SagerNet.configureIntent(service))
         .setSmallIcon(R.drawable.ic_service_active)
@@ -142,6 +167,7 @@ class ServiceNotification(
     init {
         service as Context
         updateActions()
+        BalancerRuntimeState.registerListener(this, balancerStateListener)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             // https://developer.android.com/design/ui/mobile/guides/home-screen/notifications
@@ -225,6 +251,7 @@ class ServiceNotification(
         NotificationManagerCompat.from(service as Service).notify(notificationId, builder.build())
 
     fun destroy() {
+        BalancerRuntimeState.unregisterListener(this)
         (service as Service).unregisterReceiver(this)
         updateCallback(false)
         ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)

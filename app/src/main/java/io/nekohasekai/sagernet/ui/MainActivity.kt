@@ -53,6 +53,7 @@ import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.aidl.AppStats
 import io.nekohasekai.sagernet.aidl.ISagerNetService
 import io.nekohasekai.sagernet.aidl.TrafficStats
+import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.SagerConnection
 import io.nekohasekai.sagernet.database.*
@@ -425,6 +426,7 @@ class MainActivity : ThemedActivity(),
 
         if (!started) {
             statsUpdated(emptyList())
+            binding.stats.updateConnectedTarget(null)
         }
 
         binding.fab.changeState(state, this.state, animate)
@@ -546,6 +548,12 @@ class MainActivity : ThemedActivity(),
     }
 
     val connection = SagerConnection(true)
+    private val balancerStateListener: (Long, BalancerRuntimeState.Snapshot?) -> Unit =
+        { balancerId, snapshot ->
+            if (balancerId == DataStore.currentProfile) {
+                binding.stats.updateConnectedTarget(snapshot?.activeProfileName)
+            }
+        }
     override fun onServiceConnected(service: ISagerNetService) = changeState(try {
         BaseService.State.entries[service.state].also {
             SagerNet.started = it.canStop
@@ -569,6 +577,9 @@ class MainActivity : ThemedActivity(),
 
         if (isCurrent) binding.stats.updateTraffic(
             stats.txRateProxy, stats.rxRateProxy
+        )
+        binding.stats.updateConnectedTarget(
+            BalancerRuntimeState.get(DataStore.currentProfile)?.activeProfileName
         )
 
         runOnDefaultDispatcher {
@@ -604,11 +615,16 @@ class MainActivity : ThemedActivity(),
     override fun onStart() {
         super.onStart()
         connection.bandwidthTimeout = 1000
+        BalancerRuntimeState.registerListener(this, balancerStateListener)
+        binding.stats.updateConnectedTarget(
+            BalancerRuntimeState.get(DataStore.currentProfile)?.activeProfileName
+        )
         GroupManager.userInterface = userInterface
     }
 
     override fun onStop() {
         connection.bandwidthTimeout = 0
+        BalancerRuntimeState.unregisterListener(this)
         GroupManager.userInterface = null
         super.onStop()
     }

@@ -167,6 +167,7 @@ class VpnService : BaseVpnService(),
             if (networkListenerIsRunning) {
                 underlyingNetwork = it
                 SagerNet.reloadNetwork(it)
+                onUnderlyingNetworkChanged(it)
             }
         }
     }
@@ -178,9 +179,10 @@ class VpnService : BaseVpnService(),
 
     private fun startVpn() {
         instance = this
+        val appLabel = applicationInfo.loadLabel(packageManager).toString()
 
         val builder = Builder().setConfigureIntent(SagerNet.configureIntent(this))
-            .setSession(getString(R.string.app_name))
+            .setSession(appLabel)
             .setMtu(DataStore.mtu)
 
         builder.addAddress(PRIVATE_VLAN4_CLIENT, PRIVATE_VLAN4_CLIENT_PREFIX)

@@ -50,6 +50,7 @@ class ProxyService : Service(),
             if (networkListenerIsRunning) {
                 SagerNet.reloadNetwork(it)
                 underlyingNetwork = it
+                onUnderlyingNetworkChanged(it)
             }
         }
     }

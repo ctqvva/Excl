@@ -39,13 +39,17 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.takisoft.preferencex.EditTextPreference
+import androidx.preference.Preference
 import com.takisoft.preferencex.PreferenceFragmentCompat
 import com.takisoft.preferencex.SimpleMenuPreference
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.bg.BalancerRuntimeState
+import io.nekohasekai.sagernet.database.BalancerDisplayResolver
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProfileManager
 import io.nekohasekai.sagernet.database.ProxyEntity
+import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.database.preference.EditTextPreferenceModifiers
 import io.nekohasekai.sagernet.databinding.LayoutAddEntityBinding
 import io.nekohasekai.sagernet.databinding.LayoutProfileBinding
@@ -95,6 +99,7 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
     lateinit var balancerNameFilter: EditTextPreference
     lateinit var balancerNameFilter1: EditTextPreference
     lateinit var probeInterval: EditTextPreference
+    lateinit var balancerRuntimeStatus: Preference
 
     override fun PreferenceFragmentCompat.createPreferences(
         savedInstanceState: Bundle?,
@@ -107,6 +112,7 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         balancerNameFilter = findPreference(Key.BALANCER_NAME_FILTER)!!
         balancerNameFilter1 = findPreference(Key.BALANCER_NAME_FILTER1)!!
         probeInterval = findPreference(Key.PROBE_INTERVAL)!!
+        balancerRuntimeStatus = findPreference("balancerRuntimeStatus")!!
         probeInterval.onBindEditTextListener = EditTextPreferenceModifiers.Number
 
         itemView = findViewById(R.id.list_cell)
@@ -140,6 +146,15 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
     lateinit var configurationList: RecyclerView
     lateinit var configurationAdapter: ProxiesAdapter
     lateinit var layoutManager: LinearLayoutManager
+    private val balancerStateListener: (Long, BalancerRuntimeState.Snapshot?) -> Unit =
+        { balancerId, _ ->
+            if (balancerId == DataStore.editingId) {
+                updateRuntimeSummary()
+                configurationList.post {
+                    configurationAdapter.notifyDataSetChanged()
+                }
+            }
+        }
 
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,6 +219,20 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        BalancerRuntimeState.registerListener(this, balancerStateListener)
+        updateRuntimeSummary()
+        if (this::configurationAdapter.isInitialized) {
+            configurationAdapter.notifyDataSetChanged()
+        }
+    }
+
+    override fun onStop() {
+        BalancerRuntimeState.unregisterListener(this)
+        super.onStop()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(ChainSettingsActivity.Companion.KEY_PROXY_LIST, proxyList.map { it.id }.joinToString(","))
@@ -235,6 +264,53 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         }
 
         updateType()
+    }
+
+    private fun updateRuntimeSummary() {
+        val snapshot = BalancerRuntimeState.get(DataStore.editingId)
+        val hint = SagerDatabase.proxyDao.getById(DataStore.editingId)
+            ?.let(BalancerDisplayResolver::buildHint)
+        val summary = when {
+            snapshot != null -> {
+                getString(R.string.balancer_current_member_value, snapshot.activeProfileName)
+            }
+            hint?.preferredMemberName != null -> {
+                getString(R.string.balancer_preferred_member_value, hint.preferredMemberName)
+            }
+            else -> {
+                val total = hint?.totalMembers ?: resolveDisplayedMembers().size
+                val alive = hint?.aliveMembers ?: resolveDisplayedMembers().count { it.status == 1 }
+                if (total > 0) {
+                    getString(R.string.balancer_runtime_status_observing, alive, total)
+                } else {
+                    getString(R.string.balancer_runtime_status_waiting)
+                }
+            }
+        }
+        supportActionBar?.subtitle = summary
+        if (this::balancerRuntimeStatus.isInitialized) {
+            balancerRuntimeStatus.summary = summary
+        }
+    }
+
+    private fun resolveDisplayedMembers(): List<ProxyEntity> {
+        return when (DataStore.balancerType) {
+            BalancerBean.TYPE_GROUP -> {
+                val excludeRegex = runCatching {
+                    DataStore.balancerNameFilter.takeIf { it.isNotEmpty() }?.let(::Regex)
+                }.getOrNull()
+                val includeRegex = runCatching {
+                    DataStore.balancerNameFilter1.takeIf { it.isNotEmpty() }?.let(::Regex)
+                }.getOrNull()
+                SagerDatabase.proxyDao.getByGroup(DataStore.balancerGroup)
+                    .filter { entity ->
+                        val name = entity.requireBean().name
+                        (excludeRegex == null || !excludeRegex.containsMatchIn(name)) &&
+                            (includeRegex == null || includeRegex.containsMatchIn(name))
+                    }
+            }
+            else -> proxyList.toList()
+        }
     }
 
     inner class ProxiesAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -383,15 +459,19 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
 
         val profileName = binding.profileName
         val profileType = binding.profileType
+        val profileStatus = binding.profileStatus
         val trafficText: TextView = binding.trafficText
         val editButton = binding.edit
         val deleteButton = binding.deleteIcon
         val shareLayout = binding.share
+        val selectedView = binding.selectedView
 
         fun bind(proxyEntity: ProxyEntity) {
 
             profileName.text = proxyEntity.displayName()
             profileType.text = proxyEntity.displayType()
+            selectedView.isVisible =
+                BalancerRuntimeState.get(DataStore.editingId)?.activeProfileId == proxyEntity.id
 
             var rx = proxyEntity.rx
             var tx = proxyEntity.tx
@@ -410,6 +490,28 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
                     FormatFileSizeCompat.formatFileSize(itemView.context, tx, DataStore.useIECUnit),
                     FormatFileSizeCompat.formatFileSize(itemView.context, rx, DataStore.useIECUnit)
                 )
+            }
+
+            val snapshot = BalancerRuntimeState.get(DataStore.editingId)
+            when {
+                snapshot?.activeProfileId == proxyEntity.id -> {
+                    profileStatus.setText(R.string.balancer_active)
+                    profileStatus.setTextColor(itemView.context.getColour(R.color.material_green_500))
+                }
+                proxyEntity.status == 1 -> {
+                    profileStatus.text = itemView.context.getString(
+                        R.string.available,
+                        proxyEntity.ping
+                    )
+                    profileStatus.setTextColor(itemView.context.getColour(R.color.material_green_500))
+                }
+                proxyEntity.status == 3 -> {
+                    profileStatus.setText(R.string.unavailable)
+                    profileStatus.setTextColor(itemView.context.getColour(R.color.material_red_500))
+                }
+                else -> {
+                    profileStatus.text = ""
+                }
             }
 
             editButton.setOnClickListener {

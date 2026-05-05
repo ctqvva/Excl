@@ -84,6 +84,8 @@ object Key {
     const val PRIVACY_HONEYPOT_PORTS = "privacyHoneypotPorts"
     const val PRIVACY_HONEYPOT_LOG = "privacyHoneypotLog"
     const val PRIVACY_CONTROL_TOKEN = "privacyControlToken"
+    const val PRIVACY_LAUNCHER_ALIAS = "privacyLauncherAlias"
+    const val PRIVACY_LAUNCHER_ALIAS_STATUS = "privacyLauncherAliasStatus"
     const val SPEED_INTERVAL = "speedInterval"
     const val SHOW_DIRECT_SPEED = "showDirectSpeed"
     const val LOCAL_DNS_PORT = "portLocalDns"

@@ -84,6 +84,12 @@
     <string name="privacy_honeypot_logs">Honeypot log</string>
     <string name="privacy_honeypot_logs_empty">No honeypot hits recorded.</string>
     <string name="privacy_honeypot_logs_summary">Latest: %1$s on port %2$d (%3$s)</string>
+    <string name="privacy_launcher_alias">Launcher disguise</string>
+    <string name="privacy_launcher_alias_sum">Switch the launcher icon and launcher label. Android package name still requires a separate build.</string>
+    <string name="privacy_launcher_alias_default">Exclave</string>
+    <string name="privacy_launcher_alias_camera">Camera</string>
+    <string name="privacy_launcher_alias_shadowsocks">Shadowsocks</string>
+    <string name="privacy_launcher_alias_applied">Launcher disguise updated. Some launchers refresh after a short delay.</string>
     <string name="privacy_bad_apps_title">Apps forced outside VPN</string>
     <string name="privacy_bad_apps_add_recommended">Add recommended detector apps</string>
     <string name="privacy_bad_apps_recommended_added">Recommended detector apps were added to the list.</string>
@@ -245,6 +251,17 @@
     <string name="balancer_settings">Balancer settings</string>
     <string name="balancer_type">Type</string>
     <string name="balancer_strategy">Strategy</string>
+    <string name="balancer_connected_via">Via %1$s</string>
+    <string name="balancer_active">Active</string>
+    <string name="balancer_waiting_for_traffic">Waiting for traffic</string>
+    <string name="balancer_current_member">Current member</string>
+    <string name="balancer_current_member_value">Current member: %1$s</string>
+    <string name="balancer_current_member_waiting">Current member: waiting for traffic</string>
+    <string name="balancer_preferred_member_value">Preferred member: %1$s</string>
+    <string name="balancer_alive_members">Alive members: %1$d/%2$d</string>
+    <string name="balancer_alive_members_short">%1$d/%2$d alive</string>
+    <string name="balancer_runtime_status_waiting">No active member yet</string>
+    <string name="balancer_runtime_status_observing">Observing %1$d/%2$d alive members</string>
     <string name="chain_settings">Chain settings</string>
     <string name="config_settings">Config settings</string>
     <string name="circular_reference">Circular reference</string>
@@ -281,6 +298,8 @@
     <!-- status -->
     <string name="connecting">Connecting…</string>
     <string name="vpn_connected">Connected, tap to check connection</string>
+    <string name="vpn_connected_via">Connected via %1$s</string>
+    <string name="connected_profile_via">%1$s via %2$s</string>
     <string name="not_connected">Not connected</string>
     <!-- subscriptions -->
     <string name="subscriptions">Subscriptions</string>

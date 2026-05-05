@@ -52,6 +52,7 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.aidl.TrafficStats
+import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.test.V2RayTestInstance
 import io.nekohasekai.sagernet.database.*
@@ -1527,10 +1528,74 @@ class ConfigurationFragment @JvmOverloads constructor(
                     address = ""
                 }
 
+                val balancerSnapshot = if (
+                    proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
+                    SagerNet.started
+                ) {
+                    BalancerRuntimeState.get(proxyEntity.id)
+                } else {
+                    null
+                }
+                val balancerHint = if (
+                    proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
+                    SagerNet.started
+                ) {
+                    BalancerDisplayResolver.buildHint(proxyEntity)
+                } else {
+                    null
+                }
+
+                if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
+                    address = when {
+                        balancerSnapshot != null -> {
+                            getString(
+                                R.string.balancer_current_member_value,
+                                balancerSnapshot.activeProfileName
+                            )
+                        }
+                        balancerHint?.preferredMemberName != null -> {
+                            getString(
+                                R.string.balancer_preferred_member_value,
+                                balancerHint.preferredMemberName
+                            )
+                        }
+                        balancerHint != null && balancerHint.totalMembers > 0 -> {
+                            getString(
+                                R.string.balancer_alive_members,
+                                balancerHint.aliveMembers,
+                                balancerHint.totalMembers
+                            )
+                        }
+                        SagerNet.started -> {
+                            getString(R.string.balancer_current_member_waiting)
+                        }
+                        else -> {
+                            address
+                        }
+                    }
+                }
+
                 profileAddress.text = address
                 (trafficText.parent as View).isGone = (!showTraffic || proxyEntity.status <= 0) && address.isEmpty()
 
-                if (proxyEntity.status <= 0) {
+                if (balancerSnapshot != null) {
+                    profileStatus.setText(R.string.balancer_active)
+                    profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
+                } else if (
+                    proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
+                    SagerNet.started
+                ) {
+                    if (balancerHint != null && balancerHint.totalMembers > 0) {
+                        profileStatus.text = getString(
+                            R.string.balancer_alive_members_short,
+                            balancerHint.aliveMembers,
+                            balancerHint.totalMembers
+                        )
+                    } else {
+                        profileStatus.setText(R.string.balancer_waiting_for_traffic)
+                    }
+                    profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
+                } else if (proxyEntity.status <= 0) {
                     if (showTraffic) {
                         profileStatus.text = trafficText.text
                         profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))

@@ -153,6 +153,7 @@ class V2rayBuildResult(
     var outboundTags: List<String>,
     var outboundTagsCurrent: List<String>,
     var outboundTagsAll: Map<String, ProxyEntity>,
+    var balancerTrackedMembers: Map<Long, Map<Long, TrackedBalancerMember>>,
     var bypassTag: String,
     var observerTag: String,
     var observatoryTags: Set<String>,
@@ -160,6 +161,11 @@ class V2rayBuildResult(
     val alerts: List<Pair<Int, String>>,
 ) {
     data class IndexEntity(var isBalancer: Boolean, var chain: LinkedHashMap<Int, ProxyEntity>)
+    data class TrackedBalancerMember(
+        val profileId: Long,
+        val profileName: String,
+        val trafficProfileIds: Set<Long>,
+    )
 }
 
 fun buildV2RayConfig(
@@ -169,6 +175,8 @@ fun buildV2RayConfig(
     val outboundTags = ArrayList<String>()
     val outboundTagsCurrent = ArrayList<String>()
     val outboundTagsAll = HashMap<String, ProxyEntity>()
+    val balancerTrackedMembers =
+        HashMap<Long, LinkedHashMap<Long, V2rayBuildResult.TrackedBalancerMember>>()
     val globalOutbounds = ArrayList<String>()
 
     fun ProxyEntity.resolveChainRecursively(): MutableList<ProxyEntity> {
@@ -206,7 +214,6 @@ fun buildV2RayConfig(
                 if (item.id == id) continue
                 when (item.type) {
                     ProxyEntity.TYPE_BALANCER -> error("balancer in balancer is not supported")
-                    ProxyEntity.TYPE_CHAIN -> error("proxy chain in balancer is not supported")
                     ProxyEntity.TYPE_CONFIG -> if (item.configBean!!.type == "v2ray") error("custom config in balancer is not supported")
                 }
                 beanList.add(item)
@@ -584,6 +591,7 @@ fun buildV2RayConfig(
             tagOutbound: String,
             profileList: List<ProxyEntity>,
             isBalancer: Boolean,
+            balancerOwnerId: Long?,
             balancer: () -> BalancerBean?,
         ): String {
             var pastExternal = false
@@ -592,10 +600,56 @@ fun buildV2RayConfig(
             lateinit var pastInboundTag: String
             val chainMap = LinkedHashMap<Int, ProxyEntity>()
             indexMap.add(IndexEntity(isBalancer, chainMap))
-            val chainOutbounds = ArrayList<OutboundObject>()
+            val balancerSelectorTags = ArrayList<String>()
             var chainOutbound = ""
 
             profileList.forEachIndexed { index, proxyEntity ->
+                if (isBalancer) {
+                    if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
+                        error("balancer in balancer is not supported")
+                    }
+                    if (proxyEntity.type == ProxyEntity.TYPE_CONFIG && proxyEntity.configBean!!.type == "v2ray") {
+                        error("custom config in balancer is not supported")
+                    }
+
+                    val branchProfiles = proxyEntity.resolveChain()
+                    val trackedTrafficProfileIds = when (proxyEntity.type) {
+                        ProxyEntity.TYPE_CHAIN -> proxyEntity.resolveChainRecursively()
+                            .map { it.id }
+                            .toSet()
+                        else -> setOf(proxyEntity.id)
+                    }
+                    balancerOwnerId?.let { ownerId ->
+                        balancerTrackedMembers.getOrPut(ownerId) { LinkedHashMap() }[proxyEntity.id] =
+                            V2rayBuildResult.TrackedBalancerMember(
+                                proxyEntity.id,
+                                proxyEntity.displayName(),
+                                trackedTrafficProfileIds,
+                            )
+                    }
+                    val needsBranchChain =
+                        proxyEntity.type == ProxyEntity.TYPE_CHAIN ||
+                            branchProfiles.size > 1 ||
+                            branchProfiles.firstOrNull()?.id != proxyEntity.id
+                    if (needsBranchChain) {
+                        val branchTag = buildChain(
+                            "$TAG_AGENT-global-${proxyEntity.id}",
+                            branchProfiles,
+                            false,
+                            null,
+                        ) { null }
+                        outboundTagsAll[branchTag] = proxyEntity
+                        if (tagOutbound == TAG_AGENT && !outboundTagsCurrent.contains(branchTag)) {
+                            outboundTagsCurrent.add(branchTag)
+                        }
+                        balancerSelectorTags.add(branchTag)
+                        if (index == 0) {
+                            chainOutbound = branchTag
+                        }
+                        return@forEachIndexed
+                    }
+                }
+
                 val bean = proxyEntity.requireBean()
                 currentOutbound = OutboundObject()
 
@@ -2011,7 +2065,9 @@ fun buildV2RayConfig(
 
                 if (!needGlobal) {
                     outbounds.add(currentOutbound)
-                    chainOutbounds.add(currentOutbound)
+                    if (isBalancer) {
+                        balancerSelectorTags.add(currentOutbound.tag)
+                    }
                     pastExternal = proxyEntity.needExternal()
                     pastOutbound = currentOutbound
                 }
@@ -2028,7 +2084,7 @@ fun buildV2RayConfig(
                         probeInterval = "${balancerBean.probeInterval}s"
                     }
                     enableConcurrency = true
-                    subjectSelector = HashSet(chainOutbounds.map { it.tag })
+                    subjectSelector = HashSet(balancerSelectorTags)
                 }
                 val observatoryItem = MultiObservatoryObject.MultiObservatoryItem().apply {
                     tag = "observer-$tagOutbound"
@@ -2046,7 +2102,7 @@ fun buildV2RayConfig(
                 if (routing.balancers == null) routing.balancers = ArrayList()
                 routing.balancers.add(RoutingObject.BalancerObject().apply {
                     tag = "balancer-$tagOutbound"
-                    selector = chainOutbounds.map { it.tag }
+                    selector = balancerSelectorTags
                     if (multiObservatory == null) {
                         multiObservatory = MultiObservatoryObject().apply {
                             observers = mutableListOf()
@@ -2089,7 +2145,7 @@ fun buildV2RayConfig(
         val mainIsBalancer = proxy.balancerBean != null
 
         val tagProxy = buildChain(
-            TAG_AGENT, proxies, mainIsBalancer
+            TAG_AGENT, proxies, mainIsBalancer, proxy.id
         ) { proxy.balancerBean }
 
         val balancerMap = mutableMapOf<Long, String>()
@@ -2097,7 +2153,7 @@ fun buildV2RayConfig(
         extraProxies.forEach { (key, entities) ->
             val (id, balancer) = key
             val (isBalancer, balancerBean) = balancer
-            tagMap[id] = buildChain("$TAG_AGENT-$id", entities, isBalancer, balancerBean::value)
+            tagMap[id] = buildChain("$TAG_AGENT-$id", entities, isBalancer, id, balancerBean::value)
             if (isBalancer) {
                 balancerMap[id] = "balancer-$TAG_AGENT-$id"
             }
@@ -2649,6 +2705,7 @@ fun buildV2RayConfig(
             outboundTags,
             outboundTagsCurrent,
             outboundTagsAll,
+            balancerTrackedMembers,
             TAG_BYPASS,
             rootObserver?.tag ?: "",
             rootObserver?.settings?.get("subjectSelector") as? Set<String> ?: HashSet(),
@@ -2899,6 +2956,7 @@ fun buildCustomConfig(proxy: ProxyEntity, port: Int): V2rayBuildResult {
         0, // shPort
         outboundTags,
         outboundTags,
+        emptyMap(),
         emptyMap(),
         directTag,
         "",

@@ -41,6 +41,16 @@ private val Project.androidComponents: ApplicationAndroidComponentsExtension
 private lateinit var metadata: Properties
 private lateinit var localProperties: Properties
 
+private fun Project.overrideStringProperty(
+    gradleName: String,
+    envName: String,
+): String? {
+    return (findProperty(gradleName) as String?)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: System.getenv(envName)?.trim()?.takeIf { it.isNotEmpty() }
+}
+
 fun Project.requireMetadata(): Properties {
     if (!::metadata.isInitialized) {
         metadata = Properties().apply {
@@ -190,14 +200,22 @@ fun Project.setupPlugin(projectName: String) {
 }
 
 fun Project.setupApp() {
-    val pkgName = requireMetadata().getProperty("PACKAGE_NAME").trim()
+    val defaultPackageName = requireMetadata().getProperty("PACKAGE_NAME").trim()
     val verName = requireMetadata().getProperty("VERSION_NAME").trim()
     val verCode = requireMetadata().getProperty("VERSION_CODE").trim().toInt() * 5
+    val pkgName = overrideStringProperty("stealthApplicationId", "EXCLAVE_APPLICATION_ID")
+        ?: defaultPackageName
+    val launcherLabel = overrideStringProperty("stealthAppLabel", "EXCLAVE_APP_LABEL")
+        ?: "Exclave"
+    val outputBaseName = launcherLabel.replace(Regex("[^A-Za-z0-9._-]+"), "-")
+        .trim('-')
+        .ifEmpty { "Exclave" }
     setupAppCommon()
     androidApp.apply {
         defaultConfig.applicationId = pkgName
         defaultConfig.versionCode = verCode
         defaultConfig.versionName = verName
+        defaultConfig.manifestPlaceholders["launcherLabel"] = launcherLabel
         buildTypes.getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -233,7 +251,7 @@ fun Project.setupApp() {
                 (output as? VariantOutputImpl)?.let { variantOutputImpl ->
                     val versionName = variantOutputImpl.versionName.orNull.orEmpty()
                     variantOutputImpl.outputFileName.set(variantOutputImpl.outputFileName.get()
-                        .replace(project.name, "Exclave-$versionName")
+                        .replace(project.name, "$outputBaseName-$versionName")
                         .replace("-release", "")
                         .replace("-oss", "")
                     )

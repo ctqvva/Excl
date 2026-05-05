@@ -22,6 +22,7 @@ package io.nekohasekai.sagernet.bg.proto
 import com.v2ray.core.app.observatory.OutboundStatus
 import io.nekohasekai.sagernet.LogLevel
 import io.nekohasekai.sagernet.SagerNet
+import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
@@ -155,6 +156,9 @@ class ProxyInstance(profile: ProxyEntity, val service: BaseService.Interface) : 
 
     override fun close() {
         SagerNet.started = false
+        if (profile.balancerBean != null) {
+            BalancerRuntimeState.clear(profile.id)
+        }
 
         persistStats()
         super.close()
@@ -186,6 +190,10 @@ class ProxyInstance(profile: ProxyEntity, val service: BaseService.Interface) : 
     private val interTags by lazy {
         config.outboundTagsAll.filterKeys { !config.outboundTags.contains(it) }
     }
+    private val balancerTrackedMembers by lazy {
+        config.balancerTrackedMembers[profile.id].orEmpty()
+    }
+    private val balancerMemberTotals = hashMapOf<Long, Long>()
 
     class OutboundStats(
         val proxyEntity: ProxyEntity, var uplinkTotal: Long = 0L, var downlinkTotal: Long = 0L
@@ -218,24 +226,17 @@ class ProxyInstance(profile: ProxyEntity, val service: BaseService.Interface) : 
         uplinkProxy = 0L
         downlinkProxy = 0L
 
-        val currentUpLink = currentTags.map { (tag, profile) ->
-            queryStats(tag, "uplink").apply {
-                profile?.also {
-                    registerStats(
-                        it, uplink = this
-                    )
-                }
+        val currentTraffic = currentTags.map { (tag, profile) ->
+            val uplink = queryStats(tag, "uplink")
+            val downlink = queryStats(tag, "downlink")
+            profile?.also {
+                registerStats(it, uplink = uplink)
+                registerStats(it, downlink = downlink)
             }
+            Triple(profile, uplink, downlink)
         }
-        val currentDownLink = currentTags.map { (tag, profile) ->
-            queryStats(tag, "downlink").apply {
-                profile?.also {
-                    registerStats(it, downlink = this)
-                }
-            }
-        }
-        uplinkProxy += currentUpLink.fold(0L) { acc, l -> acc + l }
-        downlinkProxy += currentDownLink.fold(0L) { acc, l -> acc + l }
+        uplinkProxy += currentTraffic.fold(0L) { acc, (_, uplink, _) -> acc + uplink }
+        downlinkProxy += currentTraffic.fold(0L) { acc, (_, _, downlink) -> acc + downlink }
 
         outboundStats.uplinkTotal += uplinkProxy
         outboundStats.downlinkTotal += downlinkProxy
@@ -266,6 +267,28 @@ class ProxyInstance(profile: ProxyEntity, val service: BaseService.Interface) : 
                     registerStats(profile, downlink = it)
                 }
             }
+        }
+
+        if (profile.balancerBean != null && balancerTrackedMembers.isNotEmpty()) {
+            balancerTrackedMembers.values
+                .map { member ->
+                    val total = member.trafficProfileIds.fold(0L) { acc, trafficProfileId ->
+                        acc + (statsOutbounds[trafficProfileId]?.let {
+                            it.uplinkTotal + it.downlinkTotal
+                        } ?: 0L)
+                    }
+                    val delta = total - (balancerMemberTotals[member.profileId] ?: 0L)
+                    balancerMemberTotals[member.profileId] = total
+                    Triple(member, total, delta)
+                }
+                .maxByOrNull { (_, total, delta) ->
+                    if (delta > 0L) delta else total
+                }
+                ?.takeIf { (_, total, delta) -> delta > 0L || total > 0L }
+                ?.first
+                ?.also { member ->
+                    BalancerRuntimeState.update(profile.id, member.profileId, member.profileName)
+                }
         }
 
         return outboundStats to statsOutbounds

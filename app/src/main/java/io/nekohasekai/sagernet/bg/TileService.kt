@@ -66,6 +66,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
     }
 
     private fun updateTile(serviceState: BaseService.State, profileName: () -> String?) {
+        val appLabel = applicationInfo.loadLabel(packageManager).toString()
         qsTile?.apply {
             label = null
             when (serviceState) {
@@ -88,7 +89,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
                     state = Tile.STATE_INACTIVE
                 }
             }
-            label = label ?: getString(R.string.app_name)
+            label = label ?: appLabel
             updateTile()
         }
     }

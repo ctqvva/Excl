@@ -40,6 +40,7 @@ import io.nekohasekai.sagernet.Key.MODE_VPN
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.preference.EditTextPreferenceModifiers
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.privacy.AppDisguiseManager
 import io.nekohasekai.sagernet.privacy.PrivacyHoneypot
 import io.nekohasekai.sagernet.ui.profile.ProfileSettingsActivity.PasswordSummaryProvider
 import io.nekohasekai.sagernet.utils.PackageCache
@@ -371,6 +372,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         rulesGeoipUrl.isVisible = DataStore.rulesProvider == 3
 
         // privacy settings
+        val privacyLauncherAlias =
+            findPreference<SimpleMenuPreference>(Key.PRIVACY_LAUNCHER_ALIAS)
         val localSocks5Auth = findPreference<SwitchPreference>(Key.LOCAL_SOCKS5_AUTH)!!
         val localSocks5Username = findPreference<EditTextPreference>(Key.LOCAL_SOCKS5_USERNAME)!!
         val localSocks5Password = findPreference<EditTextPreference>(Key.LOCAL_SOCKS5_PASSWORD)!!
@@ -399,6 +402,27 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         val privacyHoneypotPorts =
             findPreference<EditTextPreference>(Key.PRIVACY_HONEYPOT_PORTS)!!
         privacyHoneypotLogs = findPreference(Key.PRIVACY_HONEYPOT_LOG)!!
+
+        privacyLauncherAlias?.let { launcherAliasPreference ->
+            runCatching {
+                val currentLauncherAlias = AppDisguiseManager.currentAliasValue(app)
+                if (DataStore.privacyLauncherAlias != currentLauncherAlias) {
+                    DataStore.privacyLauncherAlias = currentLauncherAlias
+                }
+                launcherAliasPreference.value = currentLauncherAlias
+                launcherAliasPreference.summary = AppDisguiseManager.currentAliasLabel(app)
+                launcherAliasPreference.setOnPreferenceChangeListener { _, newValue ->
+                    val alias = newValue as String
+                    AppDisguiseManager.apply(app, alias)
+                    DataStore.privacyLauncherAlias = alias
+                    launcherAliasPreference.summary = AppDisguiseManager.labelForValue(app, alias)
+                    snackbar(R.string.privacy_launcher_alias_applied).show()
+                    true
+                }
+            }.onFailure {
+                launcherAliasPreference.remove()
+            }
+        }
 
         localSocks5Password.summaryProvider = PasswordSummaryProvider
         fun updateLocalProxyAuthInputs(socksAuthEnabled: Boolean, httpAuthEnabled: Boolean) {

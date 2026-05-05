@@ -267,6 +267,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var privacyHoneypotPorts by configurationStore.string(Key.PRIVACY_HONEYPOT_PORTS) { "1080,10808,3128,8080,8888" }
     var privacyHoneypotLog by configurationStore.string(Key.PRIVACY_HONEYPOT_LOG)
     var privacyControlToken by configurationStore.string(Key.PRIVACY_CONTROL_TOKEN)
+    var privacyLauncherAlias by configurationStore.string(Key.PRIVACY_LAUNCHER_ALIAS) { "default" }
     var showDirectSpeed by configurationStore.boolean(Key.SHOW_DIRECT_SPEED)
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT)

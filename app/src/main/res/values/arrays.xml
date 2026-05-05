@@ -414,6 +414,18 @@
         <item>leastLoad</item>
     </string-array>
 
+    <string-array name="privacy_launcher_alias_entry">
+        <item>@string/privacy_launcher_alias_default</item>
+        <item>@string/privacy_launcher_alias_camera</item>
+        <item>@string/privacy_launcher_alias_shadowsocks</item>
+    </string-array>
+
+    <string-array name="privacy_launcher_alias_value">
+        <item>default</item>
+        <item>camera</item>
+        <item>shadowsocks</item>
+    </string-array>
+
     <string-array name="int_array_3">
         <item>0</item>
         <item>1</item>

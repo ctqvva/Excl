@@ -25,6 +25,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Network
 import android.os.*
 import io.nekohasekai.sagernet.Action
 import io.nekohasekai.sagernet.BootReceiver
@@ -35,6 +36,7 @@ import io.nekohasekai.sagernet.aidl.ISagerNetServiceCallback
 import io.nekohasekai.sagernet.aidl.TrafficStats
 import io.nekohasekai.sagernet.bg.proto.ProxyInstance
 import io.nekohasekai.sagernet.database.DataStore
+import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.Alerts
 import io.nekohasekai.sagernet.fmt.TAG_SOCKS
@@ -73,6 +75,11 @@ class BaseService {
         var state = State.Stopped
         var proxy: ProxyInstance? = null
         var notification: ServiceNotification? = null
+        var networkRecoveryJob: Job? = null
+        var hasSeenUnderlyingNetwork = false
+        var lastObservedUnderlyingNetwork: String? = null
+        var lastNetworkRecoveryAt = 0L
+        var lastTrafficActivityAt = 0L
 
         val receiver = broadcastReceiver { _, intent ->
             when (intent.action) {
@@ -155,6 +162,14 @@ class BaseService {
                     statsOut.uplinkTotal,
                     statsOut.downlinkTotal
                 )
+                if (
+                    stats.txRateProxy > 0L ||
+                    stats.rxRateProxy > 0L ||
+                    stats.txTotal > 0L ||
+                    stats.rxTotal > 0L
+                ) {
+                    data?.lastTrafficActivityAt = SystemClock.elapsedRealtime()
+                }
                 if (data?.state == State.Connected && bandwidthListeners.isNotEmpty()) {
                     broadcast { item ->
                         if (bandwidthListeners.contains(item.asBinder())) {
@@ -391,6 +406,7 @@ class BaseService {
         fun killProcesses() {
             PrivacyHoneypot.stop()
             data.proxy?.close()
+            resetNetworkRecoveryState()
             wakeLock?.apply {
                 release()
                 wakeLock = null
@@ -436,6 +452,112 @@ class BaseService {
         }
 
         suspend fun preInit() {}
+
+        fun resetNetworkRecoveryState() {
+            data.networkRecoveryJob?.cancel()
+            data.networkRecoveryJob = null
+            data.hasSeenUnderlyingNetwork = false
+            data.lastObservedUnderlyingNetwork = null
+            data.lastNetworkRecoveryAt = 0L
+            data.lastTrafficActivityAt = 0L
+        }
+
+        fun shouldRecoverAfterNetworkChange(profile: ProxyEntity): Boolean {
+            if (
+                profile.type == ProxyEntity.TYPE_BALANCER ||
+                profile.type == ProxyEntity.TYPE_CHAIN ||
+                profile.type == ProxyEntity.TYPE_CONFIG ||
+                profile.needExternal()
+            ) {
+                return true
+            }
+            val group = SagerDatabase.groupDao.getById(profile.groupId) ?: return false
+            return group.frontProxy > 0L || group.landingProxy > 0L
+        }
+
+        fun onUnderlyingNetworkChanged(network: Network?) {
+            val data = data
+            if (network == null) {
+                data.networkRecoveryJob?.cancel()
+                data.networkRecoveryJob = null
+                data.hasSeenUnderlyingNetwork = true
+                data.lastObservedUnderlyingNetwork = null
+                return
+            }
+
+            val networkKey = network.toString()
+            val previousNetworkKey = data.lastObservedUnderlyingNetwork
+            val hasSeenNetwork = data.hasSeenUnderlyingNetwork
+            data.hasSeenUnderlyingNetwork = true
+            data.lastObservedUnderlyingNetwork = networkKey
+
+            val proxy = data.proxy ?: return
+            if (!hasSeenNetwork || previousNetworkKey == networkKey) return
+            if (data.state != State.Connected) return
+            if (!shouldRecoverAfterNetworkChange(proxy.profile)) return
+
+            data.networkRecoveryJob?.cancel()
+            data.networkRecoveryJob = runOnDefaultDispatcher {
+                delay(12000L)
+
+                val runningProxy = data.proxy ?: return@runOnDefaultDispatcher
+                if (data.state != State.Connected) return@runOnDefaultDispatcher
+                if (data.lastObservedUnderlyingNetwork != networkKey) return@runOnDefaultDispatcher
+
+                val now = SystemClock.elapsedRealtime()
+                if (now - data.lastNetworkRecoveryAt < 120000L) return@runOnDefaultDispatcher
+                if (
+                    data.lastTrafficActivityAt != 0L &&
+                    now - data.lastTrafficActivityAt > 45000L
+                ) {
+                    return@runOnDefaultDispatcher
+                }
+
+                val probeUrl = runningProxy.profile.balancerBean?.probeUrl
+                    ?.takeIf { it.isNotBlank() }
+                    ?: DataStore.connectionTestURL
+                val healthy = runCatching {
+                    Libsagernetcore.urlTest(
+                        runningProxy.v2rayPoint,
+                        TAG_SOCKS,
+                        probeUrl,
+                        3000,
+                    )
+                    true
+                }.getOrDefault(false)
+
+                if (healthy) return@runOnDefaultDispatcher
+
+                delay(8000L)
+
+                val stableProxy = data.proxy ?: return@runOnDefaultDispatcher
+                if (data.state != State.Connected) return@runOnDefaultDispatcher
+                if (data.lastObservedUnderlyingNetwork != networkKey) return@runOnDefaultDispatcher
+
+                val stillUnhealthy = runCatching {
+                    Libsagernetcore.urlTest(
+                        stableProxy.v2rayPoint,
+                        TAG_SOCKS,
+                        probeUrl,
+                        3000,
+                    )
+                    false
+                }.getOrDefault(true)
+
+                if (stillUnhealthy) {
+                    data.lastNetworkRecoveryAt = SystemClock.elapsedRealtime()
+                    Logs.i("network switch left the current proxy stack unhealthy after stabilization, restarting service")
+                    onMainDispatcher {
+                        if (
+                            data.state == State.Connected &&
+                            data.lastObservedUnderlyingNetwork == networkKey
+                        ) {
+                            stopRunner(restart = true)
+                        }
+                    }
+                }
+            }
+        }
 
         var wakeLock: PowerManager.WakeLock?
         fun acquireWakeLock()

@@ -42,12 +42,14 @@ import io.nekohasekai.sagernet.ui.MainActivity
 import io.nekohasekai.sagernet.utils.FormatFileSizeCompat
 import io.nekohasekai.sagernet.utils.Theme
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 class StatsBar @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null,
     defStyleAttr: Int = com.google.android.material.R.attr.bottomAppBarStyle,
 ) : BottomAppBar(context, attrs, defStyleAttr) {
     private var testJob: Job? = null
+    private var connectedTarget: String? = null
     private lateinit var statusText: TextView
     private lateinit var txText: TextView
     private lateinit var rxText: TextView
@@ -134,11 +136,29 @@ class StatsBar @JvmOverloads constructor(
         TooltipCompat.setTooltipText(this, text)
     }
 
+    private fun connectedStatusText(): CharSequence {
+        val target = connectedTarget?.takeIf { it.isNotBlank() }
+        return if (target == null) {
+            context.getText(R.string.vpn_connected)
+        } else {
+            context.getString(R.string.vpn_connected_via, target)
+        }
+    }
+
+    private fun restoreConnectedStatusAfterDelay() {
+        runOnMainDispatcher {
+            delay(3000L)
+            if (hideOnScroll && (testJob == null || testJob?.isActive == false)) {
+                setStatus(connectedStatusText())
+            }
+        }
+    }
+
     fun changeState(state: BaseService.State) {
         if ((state == BaseService.State.Connected).also { hideOnScroll = it }) {
             doOnPreDraw {
                 performShow()
-                setStatus(context.getText(R.string.vpn_connected))
+                setStatus(connectedStatusText())
             }
             isEnabled = true
         } else {
@@ -146,6 +166,7 @@ class StatsBar @JvmOverloads constructor(
                 performHide()
             }
             testJob?.cancel()
+            connectedTarget = null
             updateTraffic(0, 0)
             setStatus(
                 context.getText(
@@ -156,6 +177,13 @@ class StatsBar @JvmOverloads constructor(
                     }
                 )
             )
+        }
+    }
+
+    fun updateConnectedTarget(target: String?) {
+        connectedTarget = target?.takeIf { it.isNotBlank() }
+        if (hideOnScroll && (testJob == null || testJob?.isActive == false)) {
+            setStatus(connectedStatusText())
         }
     }
 
@@ -182,6 +210,7 @@ class StatsBar @JvmOverloads constructor(
             try {
                 val elapsed = activity.urlTest()
                 onMainDispatcher {
+                    testJob = null
                     isEnabled = true
                     setStatus(
                         context.getString(
@@ -192,11 +221,13 @@ class StatsBar @JvmOverloads constructor(
                             }, elapsed
                         )
                     )
+                    restoreConnectedStatusAfterDelay()
                 }
 
             } catch (e: Exception) {
                 Logs.w(e)
                 onMainDispatcher {
+                    testJob = null
                     isEnabled = true
                     var msg = e.localizedMessage ?: e.readableMessage
                     when {
@@ -208,6 +239,7 @@ class StatsBar @JvmOverloads constructor(
                         }
                     }
                     setStatus(context.getString(R.string.connection_test_error, msg))
+                    restoreConnectedStatusAfterDelay()
                 }
             }
         }

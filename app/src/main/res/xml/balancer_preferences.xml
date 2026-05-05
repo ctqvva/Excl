@@ -6,6 +6,11 @@
         app:title="@string/profile_name"
         app:useSimpleSummaryProvider="true" />
 
+    <Preference
+        app:icon="@drawable/ic_baseline_manage_search_24"
+        app:key="balancerRuntimeStatus"
+        app:title="@string/balancer_current_member" />
+
     <com.takisoft.preferencex.SimpleMenuPreference
         app:defaultValue="0"
         app:entries="@array/balancer_type"
