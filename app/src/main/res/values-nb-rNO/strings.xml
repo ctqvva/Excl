@@ -286,7 +286,6 @@
 \n%s</string>
     <string name="group_delete_confirm_prompt">Er du sikker på at du vil fjerne denne gruppen\?</string>
     <string name="group_update">Oppdater</string>
-    <string name="tile_title">Bytter</string>
     <string name="quick_toggle">Veksle</string>
     <string name="menu_configuration">Konfigurasjon</string>
     <string name="obfs">Obfs</string>
@@ -351,4 +350,5 @@
     <string name="fileSize_pebibyte">PiB</string>
     <string name="translation_platform">Oversettelsesplattform</string>
     <string name="insecure_warn">Sikkerhetsrådgivning</string>
+    <string name="require_socks">Aktiver SOCKS5 inbound</string>
 </resources>

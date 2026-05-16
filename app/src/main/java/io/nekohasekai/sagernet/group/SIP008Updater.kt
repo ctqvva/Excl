@@ -52,8 +52,8 @@ object SIP008Updater : GroupUpdater() {
             } else {
 
                 val response = Libsagernetcore.newHttpClient().apply {
-                    if (SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5()) {
-                        useSocks5(DataStore.socksPort)
+                    if (SagerNet.started && DataStore.startedProfile > 0) {
+                        useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
                     }
                 }.newRequest().apply {
                     setURL(subscription.link)

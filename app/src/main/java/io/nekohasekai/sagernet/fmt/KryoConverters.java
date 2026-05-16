@@ -50,6 +50,7 @@ import io.nekohasekai.sagernet.fmt.tuic5.Tuic5Bean;
 import io.nekohasekai.sagernet.fmt.shadowtls.ShadowTLSBean;
 import io.nekohasekai.sagernet.fmt.v2ray.VLESSBean;
 import io.nekohasekai.sagernet.fmt.v2ray.VMessBean;
+import io.nekohasekai.sagernet.fmt.vkturn.VkTurnBean;
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean;
 import io.nekohasekai.sagernet.ktx.KryosKt;
 import io.nekohasekai.sagernet.ktx.Logs;
@@ -194,6 +195,12 @@ public class KryoConverters {
     public static TrustTunnelBean trusttunnelDeserialize(byte[] bytes) {
         if (bytes == null || bytes.length == 0) return null;
         return deserialize(new TrustTunnelBean(), bytes);
+    }
+
+    @TypeConverter
+    public static VkTurnBean vkturnDeserialize(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) return null;
+        return deserialize(new VkTurnBean(), bytes);
     }
 
     @TypeConverter

@@ -21,8 +21,7 @@ package io.nekohasekai.sagernet.ui.profile
 
 import android.os.Bundle
 import androidx.preference.EditTextPreference
-import com.takisoft.preferencex.PreferenceFragmentCompat
-import com.takisoft.preferencex.SimpleMenuPreference
+import androidx.preference.PreferenceFragmentCompat
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
@@ -69,14 +68,14 @@ class MieruSettingsActivity : ProfileSettingsActivity<MieruBean>() {
 
         val serverPort = findPreference<EditTextPreference>(Key.SERVER_PORT)!!
         val serverPortRange = findPreference<EditTextPreference>(Key.SERVER_PORTS)!!
-        serverPort.isEnabled = serverPortRange.text.isEmpty()
+        serverPort.isEnabled = serverPortRange.text.isNullOrEmpty()
         serverPortRange.setOnPreferenceChangeListener { _, newValue ->
             newValue as String
             serverPort.isEnabled = newValue.isEmpty()
             true
         }
 
-        /*val protocol = findPreference<SimpleMenuPreference>(Key.SERVER_PROTOCOL)!!
+        /*val protocol = findPreference<ListPreference>(Key.SERVER_PROTOCOL)!!
         val mtu = findPreference<EditTextPreference>(Key.SERVER_MTU)!!
         mtu.isVisible = protocol.value == "${MieruBean.PROTOCOL_UDP}"
         protocol.setOnPreferenceChangeListener { _, newValue ->

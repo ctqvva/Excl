@@ -67,6 +67,8 @@ import io.nekohasekai.sagernet.fmt.tuic5.toUri
 import io.nekohasekai.sagernet.fmt.v2ray.VLESSBean
 import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
 import io.nekohasekai.sagernet.fmt.v2ray.toUri
+import io.nekohasekai.sagernet.fmt.vkturn.VkTurnBean
+import io.nekohasekai.sagernet.fmt.vkturn.toUri
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
 import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.applyDefaultValues
@@ -105,6 +107,7 @@ data class ProxyEntity(
     var anytlsBean: AnyTLSBean? = null,
     var shadowquicBean: ShadowQUICBean? = null,
     var trustTunnelBean: TrustTunnelBean? = null,
+    var vkTurnBean: VkTurnBean? = null,
     var configBean: ConfigBean? = null,
     var chainBean: ChainBean? = null,
     var balancerBean: BalancerBean? = null
@@ -130,6 +133,7 @@ data class ProxyEntity(
         const val TYPE_ANYTLS = 27
         const val TYPE_SHADOWQUIC = 28
         const val TYPE_TRUSTTUNNEL = 29
+        const val TYPE_VKTURN = 30
         const val TYPE_CHAIN = 8
         const val TYPE_BALANCER = 14
         const val TYPE_CONFIG = 13
@@ -223,6 +227,7 @@ data class ProxyEntity(
             TYPE_ANYTLS -> anytlsBean = KryoConverters.anytlsDeserialize(byteArray)
             TYPE_SHADOWQUIC -> shadowquicBean = KryoConverters.shadowquicDeserialize(byteArray)
             TYPE_TRUSTTUNNEL -> trustTunnelBean = KryoConverters.trusttunnelDeserialize(byteArray)
+            TYPE_VKTURN -> vkTurnBean = KryoConverters.vkturnDeserialize(byteArray)
 
             TYPE_CONFIG -> configBean = KryoConverters.configDeserialize(byteArray)
             TYPE_CHAIN -> chainBean = KryoConverters.chainDeserialize(byteArray)
@@ -241,7 +246,7 @@ data class ProxyEntity(
         TYPE_NAIVE -> "NaïveProxy"
         TYPE_HYSTERIA2 -> "Hysteria 2"
         TYPE_SSH -> "SSH"
-        TYPE_WG -> "WireGuard"
+        TYPE_WG -> if (wgBean?.hasAmneziaOptions() == true) "AmneziaWG 2.0" else "WireGuard"
         TYPE_MIERU -> "mieru"
         TYPE_TUIC5 -> "TUIC"
         TYPE_SHADOWTLS -> "ShadowTLS"
@@ -250,6 +255,7 @@ data class ProxyEntity(
         TYPE_ANYTLS -> "AnyTLS"
         TYPE_SHADOWQUIC -> "ShadowQUIC"
         TYPE_TRUSTTUNNEL -> "TrustTunnel"
+        TYPE_VKTURN -> "VK TURN"
 
         TYPE_CHAIN -> chainName
         TYPE_CONFIG -> configName
@@ -281,6 +287,7 @@ data class ProxyEntity(
             TYPE_ANYTLS -> anytlsBean
             TYPE_SHADOWQUIC -> shadowquicBean
             TYPE_TRUSTTUNNEL -> trustTunnelBean
+            TYPE_VKTURN -> vkTurnBean
 
             TYPE_CONFIG -> configBean
             TYPE_CHAIN -> chainBean
@@ -322,6 +329,7 @@ data class ProxyEntity(
             is Http3Bean -> toUri()
             is AnyTLSBean -> toUri()
             is TrustTunnelBean -> toUri()
+            is VkTurnBean -> toUri()
             else -> null
         }
     }
@@ -339,15 +347,18 @@ data class ProxyEntity(
                 }
 
                 for ((_, chain) in config.index) {
-                    chain.entries.forEachIndexed { _, (port, profile) ->
+                    chain.entries.forEachIndexed { _, (triple, profile) ->
+                        val port = triple.first
+                        val username = triple.second
+                        val password = triple.third
                         when (val bean = profile.requireBean()) {
                             is NaiveBean -> {
                                 append("\n\n")
-                                append(bean.buildNaiveConfig(port))
+                                append(bean.buildNaiveConfig(port, username, password))
                             }
                             is ShadowQUICBean -> {
                                 append("\n\n")
-                                append(bean.buildShadowQUICConfig(port, forExport = true))
+                                append(bean.buildShadowQUICConfig(port, username, password, forExport = true))
                             }
                         }
                     }
@@ -357,14 +368,9 @@ data class ProxyEntity(
     }
 
     fun needExternal(): Boolean {
-        val bean = requireBean()
-        if (bean is ConfigBean) {
-            return bean.type != "v2ray_outbound"
-        }
         return when (type) {
             TYPE_NAIVE -> true
             TYPE_SHADOWQUIC -> true
-
             else -> false
         }
     }
@@ -389,6 +395,7 @@ data class ProxyEntity(
         anytlsBean = null
         shadowquicBean = null
         trustTunnelBean = null
+        vkTurnBean = null
 
         configBean = null
         chainBean = null
@@ -471,6 +478,10 @@ data class ProxyEntity(
                 type = TYPE_TRUSTTUNNEL
                 trustTunnelBean = bean
             }
+            is VkTurnBean -> {
+                type = TYPE_VKTURN
+                vkTurnBean = bean
+            }
 
             is ConfigBean -> {
                 type = TYPE_CONFIG
@@ -510,6 +521,7 @@ data class ProxyEntity(
             TYPE_ANYTLS -> AnyTLSSettingsActivity::class.java
             TYPE_SHADOWQUIC -> ShadowQUICSettingsActivity::class.java
             TYPE_TRUSTTUNNEL -> TrustTunnelSettingsActivity::class.java
+            TYPE_VKTURN -> VkTurnSettingsActivity::class.java
 
             TYPE_CONFIG -> ConfigSettingsActivity::class.java
             TYPE_CHAIN -> ChainSettingsActivity::class.java

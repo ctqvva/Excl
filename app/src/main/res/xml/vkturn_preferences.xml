@@ -1,0 +1,155 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        app:icon="@drawable/ic_social_emoji_symbols"
+        app:key="profileName"
+        app:title="@string/profile_name"
+        app:useSimpleSummaryProvider="true" />
+
+    <PreferenceCategory app:title="@string/vk_turn_cat">
+        <io.nekohasekai.sagernet.widget.SimpleMenuPreference
+            app:defaultValue="0"
+            app:entries="@array/vk_turn_mode_entry"
+            app:entryValues="@array/vk_turn_mode_value"
+            app:icon="@drawable/ic_baseline_nfc_24"
+            app:key="serverVkTurnMode"
+            app:title="@string/vk_turn_mode"
+            app:useSimpleSummaryProvider="true" />
+        <io.nekohasekai.sagernet.widget.SimpleMenuPreference
+            app:defaultValue="0"
+            app:entries="@array/vk_turn_provider_entry"
+            app:entryValues="@array/vk_turn_provider_value"
+            app:icon="@drawable/baseline_public_24"
+            app:key="serverVkTurnProvider"
+            app:title="@string/vk_turn_provider"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_file_cloud_queue"
+            app:key="serverVkTurnCallLink"
+            app:title="@string/vk_turn_call_link" />
+        <EditTextPreference
+            app:icon="@drawable/ic_hardware_router"
+            app:key="serverAddress"
+            app:title="@string/vk_turn_peer_address"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="56000"
+            app:icon="@drawable/ic_maps_directions_boat"
+            app:key="serverPort"
+            app:title="@string/vk_turn_peer_port"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="turn.vk.com"
+            app:icon="@drawable/ic_baseline_domain_24"
+            app:key="serverVkTurnTurnHost"
+            app:title="@string/vk_turn_host"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="443"
+            app:icon="@drawable/ic_maps_directions_boat"
+            app:key="serverVkTurnTurnPort"
+            app:title="@string/vk_turn_port"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="1"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverVkTurnStreams"
+            app:title="@string/vk_turn_streams"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverVkTurnUdp"
+            app:summary="@string/vk_turn_udp_sum"
+            app:title="@string/vk_turn_udp" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="vkTurnWireGuardCategory"
+        app:title="@string/action_wireguard">
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_domain_24"
+            app:key="serverLocalAddress"
+            app:title="@string/wireguard_local_address"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_baseline_vpn_key_24"
+            app:key="serverPrivateKey"
+            app:title="@string/ssh_private_key" />
+        <EditTextPreference
+            app:icon="@drawable/ic_action_copyright"
+            app:key="serverCertificates"
+            app:title="@string/wireguard_public_key"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_settings_password"
+            app:key="serverPassword"
+            app:title="@string/wireguard_psk" />
+        <EditTextPreference
+            app:defaultValue="1280"
+            app:icon="@drawable/baseline_public_24"
+            app:key="serverMTU"
+            app:title="@string/mtu"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverWireGuardKeepaliveInterval"
+            app:title="@string/wireguard_keepalive_interval"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_fingerprint_24"
+            app:key="serverWireGuardReserved"
+            app:title="@string/wireguard_reserved"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="vkTurnVlessCategory"
+        app:title="@string/action_vless">
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_baseline_timelapse_24"
+            app:key="serverUserId"
+            app:title="@string/uuid" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/cag_misc">
+        <EditTextPreference
+            app:icon="@drawable/ic_action_dns"
+            app:key="serverVkTurnDns"
+            app:title="@string/vk_turn_dns"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverVkTurnAllocsPerStream"
+            app:title="@string/vk_turn_allocs_per_stream"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:dialogLayout="@layout/layout_password_dialog"
+            app:icon="@drawable/ic_baseline_fingerprint_24"
+            app:key="serverVkTurnSessionId"
+            app:title="@string/vk_turn_session_id" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="serverVkTurnNoDtls"
+            app:summary="@string/vk_turn_no_dtls_sum"
+            app:title="@string/vk_turn_no_dtls" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="serverVkTurnV1"
+            app:summary="@string/vk_turn_v1_sum"
+            app:title="@string/vk_turn_v1" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="serverVkTurnManualCaptcha"
+            app:title="@string/vk_turn_manual_captcha" />
+        <SwitchPreference
+            app:icon="@drawable/ic_baseline_bug_report_24"
+            app:key="serverVkTurnDebug"
+            app:title="@string/vk_turn_debug" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

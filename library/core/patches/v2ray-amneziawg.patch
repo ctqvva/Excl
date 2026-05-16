@@ -1,0 +1,121 @@
+diff -ruN orig/infra/conf/v4/wireguard.go new/infra/conf/v4/wireguard.go
+--- orig/infra/conf/v4/wireguard.go
++++ new/infra/conf/v4/wireguard.go
+@@ -78,8 +78,8 @@
+ 	// these a fallback code in wireguard-go code,
+ 	// we don't need to process fallback manually
+ 	config.NumWorkers = c.NumWorkers
+-	if len(c.Reserved) != 0 && len(c.Reserved) != 3 {
+-		return nil, newError(`"reserved" should be empty or 3 bytes`)
++	if len(c.Reserved) != 0 && len(c.Reserved) != 3 && !wireguard.IsAmneziaReservedPayload(c.Reserved) {
++		return nil, newError(`"reserved" should be empty, 3 bytes, or an AmneziaWG payload`)
+ 	}
+ 	config.Reserved = c.Reserved
+ 	switch strings.ToLower(c.DomainStrategy) {
+diff -ruN orig/proxy/wireguard/client.go new/proxy/wireguard/client.go
+--- orig/proxy/wireguard/client.go
++++ new/proxy/wireguard/client.go
+@@ -101,6 +101,7 @@
+ 	newError("switching dialer").AtInfo().WriteToLog()
+ 
+ 	// bind := conn.NewStdNetBind() // TODO: conn.Bind wrapper for dialer
++	reserved, _ := splitAmneziaReservedPayload(c.conf.Reserved)
+ 	c.bind = &netBindClient{
+ 		netBind: netBind{
+ 			workers:   int(c.conf.NumWorkers),
+@@ -109,7 +110,7 @@
+ 		},
+ 		ctx:      core.ToBackgroundDetachedContext(ctx),
+ 		dialer:   dialer,
+-		reserved: c.conf.Reserved,
++		reserved: reserved,
+ 	}
+ 
+ 	net, err := c.makeVirtualTun()
+@@ -223,7 +224,8 @@
+ 		return nil, err
+ 	}
+ 
+-	if err = t.BuildDevice(createIPCRequest(c.conf.SecretKey, c.conf.Peers, false), c.bind); err != nil {
++	_, amneziaIPC := splitAmneziaReservedPayload(c.conf.Reserved)
++	if err = t.BuildDevice(createIPCRequest(c.conf.SecretKey, c.conf.Peers, false, amneziaIPC), c.bind); err != nil {
+ 		_ = t.Close()
+ 		return nil, err
+ 	}
+diff -ruN orig/proxy/wireguard/server.go new/proxy/wireguard/server.go
+--- orig/proxy/wireguard/server.go
++++ new/proxy/wireguard/server.go
+@@ -45,7 +45,7 @@
+ 		return nil, err
+ 	}
+ 
+-	if err = tun.BuildDevice(createIPCRequest(conf.SecretKey, conf.Peers, true), server.bind); err != nil {
++	if err = tun.BuildDevice(createIPCRequest(conf.SecretKey, conf.Peers, true, ""), server.bind); err != nil {
+ 		_ = tun.Close()
+ 		return nil, err
+ 	}
+diff -ruN orig/proxy/wireguard/wireguard.go new/proxy/wireguard/wireguard.go
+--- orig/proxy/wireguard/wireguard.go
++++ new/proxy/wireguard/wireguard.go
+@@ -1,6 +1,7 @@
+ package wireguard
+ 
+ import (
++	"bytes"
+ 	"fmt"
+ 	"net/netip"
+ 	"strings"
+@@ -10,6 +11,32 @@
+ 
+ //go:generate go run github.com/v2fly/v2ray-core/v5/common/errors/errorgen
+ 
++var amneziaReservedPrefix = []byte("EXAWG1\x00")
++
++func IsAmneziaReservedPayload(reserved []byte) bool {
++	return bytes.HasPrefix(reserved, amneziaReservedPrefix)
++}
++
++func splitAmneziaReservedPayload(reserved []byte) ([]byte, string) {
++	if !IsAmneziaReservedPayload(reserved) {
++		return reserved, ""
++	}
++	payload := reserved[len(amneziaReservedPrefix):]
++	if len(payload) == 0 {
++		return nil, ""
++	}
++	reservedLen := int(payload[0])
++	payload = payload[1:]
++	if reservedLen > len(payload) {
++		return nil, ""
++	}
++	var wireGuardReserved []byte
++	if reservedLen > 0 {
++		wireGuardReserved = payload[:reservedLen]
++	}
++	return wireGuardReserved, string(payload[reservedLen:])
++}
++
+ func toNetIpAddr(addr net.Address) netip.Addr {
+ 	ip, ok := netip.AddrFromSlice(addr.IP())
+ 	if !ok {
+@@ -51,7 +78,7 @@
+ }
+ 
+ // serialize the config into an IPC request
+-func createIPCRequest(secretKey string, peers []*PeerConfig, isServer bool) string {
++func createIPCRequest(secretKey string, peers []*PeerConfig, isServer bool, extraDeviceIPC string) string {
+ 	var request strings.Builder
+ 
+ 	fmt.Fprintf(&request, "private_key=%s\n", secretKey)
+@@ -59,6 +86,11 @@
+ 	if isServer {
+ 		// placeholder, we'll handle actual port listening on Xray
+ 		request.WriteString("listen_port=1337\n")
++	}
++
++	if trimmed := strings.Trim(extraDeviceIPC, "\n"); trimmed != "" {
++		request.WriteString(trimmed)
++		request.WriteString("\n")
+ 	}
+ 
+ 	for _, peer := range peers {

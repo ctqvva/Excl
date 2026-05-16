@@ -161,7 +161,12 @@ class BaseService {
                     if (showDirectSpeed) (proxy.downlinkDirect() / sinceLastQueryInSeconds).toLong() else 0L,
                     statsOut.uplinkTotal,
                     statsOut.downlinkTotal
-                )
+                ).apply {
+                    BalancerRuntimeState.get(proxy.profile.id)?.let { snapshot ->
+                        activeBalancerMemberId = snapshot.activeProfileId
+                        activeBalancerMemberName = snapshot.activeProfileName
+                    }
+                }
                 if (
                     stats.txRateProxy > 0L ||
                     stats.rxRateProxy > 0L ||

@@ -44,10 +44,36 @@ import io.nekohasekai.sagernet.fmt.v2ray.VLESSBean
 import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
 import io.nekohasekai.sagernet.fmt.v2ray.supportedVmessMethod
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
+import io.nekohasekai.sagernet.fmt.wireguard.putAmneziaOption
 import io.nekohasekai.sagernet.ktx.*
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
+
+private val AMNEZIA_WG_OPTION_KEYS = listOf("jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4", "i1", "i2", "i3", "i4", "i5")
+
+private fun WireGuardBean.applyAmneziaOptions(options: JsonObject?) {
+    options ?: return
+    AMNEZIA_WG_OPTION_KEYS.forEach { key ->
+        val titleKey = key.replaceFirstChar { it.uppercase() }
+        putAmneziaOption(
+            key,
+            options.getString(key)
+                ?: options.getString(titleKey)
+                ?: options.getString(key.uppercase())
+                ?: options.getInt(key)?.toString()
+                ?: options.getInt(titleKey)?.toString()
+                ?: options.getInt(key.uppercase())?.toString()
+        )
+    }
+}
+
+private fun JsonObject.getAmneziaWireGuardOptions(): JsonObject? {
+    return getObject("amnezia")
+        ?: getObject("amnezia_wg")
+        ?: getObject("amnezia-wg-option")
+        ?: getObject("amnezia_wg_option")
+}
 
 fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
     when (val type = outbound.getString("type", ignoreCase = false)) {
@@ -223,7 +249,9 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                                         }
                                     }
                                 }
-                                /*tls.getObject("ech")?.also { ech ->
+                                if (v2rayBean is VLESSBean) {
+                                    // Only parse ECH for shit VLESS free nodes
+                                    tls.getObject("ech")?.also { ech ->
                                     ech.getBoolean("enabled")?.also { enabled ->
                                         if (enabled) {
                                             v2rayBean.echEnabled = true
@@ -234,7 +262,8 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                                             }
                                         }
                                     }
-                                }*/
+                                }
+                                }
                             }
                         }
                     }
@@ -852,6 +881,8 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                     } catch (_: Exception) {}
 
                 }
+                applyAmneziaOptions(outbound)
+                applyAmneziaOptions(outbound.getAmneziaWireGuardOptions())
             }
             if (outbound.contains("server")) {
                 outbound.getString("server")?.also {
@@ -923,6 +954,8 @@ fun parseSingBoxEndpoint(endpoint: JsonObject): List<AbstractBean> {
                 } ?: endpoint.getString("address")?.also {
                     localAddress = it
                 } ?: return listOf()
+                applyAmneziaOptions(endpoint)
+                applyAmneziaOptions(endpoint.getAmneziaWireGuardOptions())
             }
             endpoint.getArray("peers")?.forEach { peer ->
                 beanList.add(bean.applyDefaultValues().clone().apply {
@@ -1163,7 +1196,7 @@ private fun JsonObject.getByteArrayArray(key: String): Array<ByteArray>? {
 }
 
 // this is not strict, but enough
-/*private fun parseECHConfigPem(pem: String): String? {
+private fun parseECHConfigPem(pem: String): String? {
     if (pem.split("-----BEGIN ECH CONFIGS-----").size - 1 != 1) {
         return null
     }
@@ -1180,4 +1213,4 @@ private fun JsonObject.getByteArrayArray(key: String): Array<ByteArray>? {
     } catch (_: Exception) {
         null
     }
-}*/
+}

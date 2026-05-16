@@ -34,14 +34,15 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreference
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.takisoft.preferencex.EditTextPreference
-import androidx.preference.Preference
-import com.takisoft.preferencex.PreferenceFragmentCompat
-import com.takisoft.preferencex.SimpleMenuPreference
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.bg.BalancerRuntimeState
@@ -80,6 +81,8 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         DataStore.balancerProbeInterval = probeInterval
         DataStore.balancerNameFilter = nameFilter
         DataStore.balancerNameFilter1 = nameFilter1
+        DataStore.balancerUseLandingProxy = useLandingProxy
+        DataStore.balancerUseFrontProxy = useFrontProxy
     }
 
     override fun BalancerBean.serialize() {
@@ -92,12 +95,16 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         probeInterval = DataStore.balancerProbeInterval
         nameFilter = DataStore.balancerNameFilter
         nameFilter1 = DataStore.balancerNameFilter1
+        useLandingProxy = DataStore.balancerUseLandingProxy
+        useFrontProxy = DataStore.balancerUseFrontProxy
     }
 
-    lateinit var balancerType: SimpleMenuPreference
+    lateinit var balancerType: ListPreference
     lateinit var balancerGroup: GroupPreference
     lateinit var balancerNameFilter: EditTextPreference
     lateinit var balancerNameFilter1: EditTextPreference
+    lateinit var balancerUseLandingProxy: SwitchPreference
+    lateinit var balancerUseFrontProxy: SwitchPreference
     lateinit var probeInterval: EditTextPreference
     lateinit var balancerRuntimeStatus: Preference
 
@@ -111,9 +118,11 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         balancerGroup = findPreference(Key.BALANCER_GROUP)!!
         balancerNameFilter = findPreference(Key.BALANCER_NAME_FILTER)!!
         balancerNameFilter1 = findPreference(Key.BALANCER_NAME_FILTER1)!!
+        balancerUseLandingProxy = findPreference(Key.BALANCER_USE_LANDING_PROXY)!!
+        balancerUseFrontProxy = findPreference(Key.BALANCER_USE_FRONT_PROXY)!!
         probeInterval = findPreference(Key.PROBE_INTERVAL)!!
         balancerRuntimeStatus = findPreference("balancerRuntimeStatus")!!
-        probeInterval.onBindEditTextListener = EditTextPreferenceModifiers.Number
+        probeInterval.setOnBindEditTextListener(EditTextPreferenceModifiers.Number)
 
         itemView = findViewById(R.id.list_cell)
 
@@ -129,6 +138,8 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
                 balancerGroup.isVisible = false
                 balancerNameFilter.isVisible = false
                 balancerNameFilter1.isVisible = false
+                balancerUseLandingProxy.isVisible = false
+                balancerUseFrontProxy.isVisible = false
                 configurationList.isVisible = true
                 itemView.isVisible = true
             }
@@ -136,6 +147,8 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
                 balancerGroup.isVisible = true
                 balancerNameFilter.isVisible = true
                 balancerNameFilter1.isVisible = true
+                balancerUseLandingProxy.isVisible = true
+                balancerUseFrontProxy.isVisible = true
                 configurationList.isVisible = false
                 itemView.isVisible = false
             }
@@ -161,8 +174,7 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
         super.onCreate(savedInstanceState)
 
         supportActionBar!!.setTitle(R.string.balancer_settings)
-        configurationList = findViewById(R.id.configuration_list)
-        ViewCompat.setOnApplyWindowInsetsListener(configurationList) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.scrollView)) { v, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
                         or WindowInsetsCompat.Type.displayCutout()
@@ -174,6 +186,7 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
             )
             insets
         }
+        configurationList = findViewById(R.id.configuration_list)
         layoutManager = FixedLinearLayoutManager(configurationList)
         configurationList.layoutManager = layoutManager
         configurationAdapter = ProxiesAdapter()
@@ -239,16 +252,13 @@ class BalancerSettingsActivity : ProfileSettingsActivity<BalancerBean>(R.layout.
     }
 
     override fun PreferenceFragmentCompat.viewCreated(view: View, savedInstanceState: Bundle?) {
-        // override the padding in ProfileSettingsActivity
+        // remove the padding by ProfileSettingsActivity
         ViewCompat.setOnApplyWindowInsetsListener(listView) { v, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
                         or WindowInsetsCompat.Type.displayCutout()
             )
-            v.updatePadding(
-                left = bars.left,
-                right = bars.right,
-            )
+            v.updatePadding()
             insets
         }
 

@@ -1,4 +1,4 @@
-Exclave is a proxy client.
+Excl is a proxy client.
 
 Features:
 

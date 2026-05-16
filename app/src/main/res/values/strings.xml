@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Exclave</string>
+    <string name="app_name" translatable="false">Excl</string>
     <string name="project">Project</string>
     <string name="github">Source code</string>
     <string name="app_version">Version</string>
@@ -12,7 +12,6 @@
     <string name="theme">Theme</string>
     <string name="group_default">Ungrouped</string>
     <string name="quick_toggle">Toggle</string>
-    <string name="tile_title">Switcher</string>
     <string name="menu_traffic">Traffic</string>
     <!-- group -->
     <string name="group_name">Group name</string>
@@ -78,15 +77,15 @@
     <string name="privacy_block_debug_listeners">Disable debug listeners</string>
     <string name="privacy_block_debug_listeners_sum">Prevent the optional pprof listener from being started by background processes.</string>
     <string name="privacy_honeypot">Enable localhost honeypot</string>
-    <string name="privacy_honeypot_sum">Listen on decoy localhost proxy ports and record which apps probe them. Only Exclave-owned decoy ports are monitored.</string>
+    <string name="privacy_honeypot_sum">Listen on decoy localhost proxy ports and record which apps probe them. Only Excl-owned decoy ports are monitored.</string>
     <string name="privacy_honeypot_ports">Honeypot ports</string>
-    <string name="privacy_honeypot_ports_sum">Comma-separated localhost ports to bind as decoys. Conflicts with Exclave’s real ports are skipped automatically.</string>
+    <string name="privacy_honeypot_ports_sum">Comma-separated localhost ports to bind as decoys. Conflicts with Excl’s real ports are skipped automatically.</string>
     <string name="privacy_honeypot_logs">Honeypot log</string>
     <string name="privacy_honeypot_logs_empty">No honeypot hits recorded.</string>
     <string name="privacy_honeypot_logs_summary">Latest: %1$s on port %2$d (%3$s)</string>
     <string name="privacy_launcher_alias">Launcher disguise</string>
     <string name="privacy_launcher_alias_sum">Switch the launcher icon and launcher label. Android package name still requires a separate build.</string>
-    <string name="privacy_launcher_alias_default">Exclave</string>
+    <string name="privacy_launcher_alias_default">Excl</string>
     <string name="privacy_launcher_alias_camera">Camera</string>
     <string name="privacy_launcher_alias_shadowsocks">Shadowsocks</string>
     <string name="privacy_launcher_alias_applied">Launcher disguise updated. Some launchers refresh after a short delay.</string>
@@ -240,6 +239,8 @@
     <string name="action_hysteria2" translatable="false">Hysteria 2</string>
     <string name="action_ssh" translatable="false">SSH</string>
     <string name="action_wireguard" translatable="false">WireGuard</string>
+    <string name="action_amneziawg" translatable="false">AmneziaWG 2.0</string>
+    <string name="action_vk_turn" translatable="false">VK TURN</string>
     <string name="action_mieru" translatable="false">mieru</string>
     <string name="action_tuic5" translatable="false">TUIC</string>
     <string name="action_shadowtls" translatable="false">ShadowTLS</string>
@@ -256,12 +257,36 @@
     <string name="balancer_waiting_for_traffic">Waiting for traffic</string>
     <string name="balancer_current_member">Current member</string>
     <string name="balancer_current_member_value">Current member: %1$s</string>
+    <string name="balancer_current_member_pending">waiting for traffic</string>
     <string name="balancer_current_member_waiting">Current member: waiting for traffic</string>
     <string name="balancer_preferred_member_value">Preferred member: %1$s</string>
+    <string name="vk_turn_settings">VK TURN settings</string>
+    <string name="vk_turn_cat">TURN bridge</string>
+    <string name="vk_turn_mode">Payload mode</string>
+    <string name="vk_turn_provider">TURN provider</string>
+    <string name="vk_turn_call_link">Call link</string>
+    <string name="vk_turn_peer_address">Bridge server address</string>
+    <string name="vk_turn_peer_port">Bridge server port</string>
+    <string name="vk_turn_host">TURN host</string>
+    <string name="vk_turn_port">TURN port</string>
+    <string name="vk_turn_streams">TURN streams</string>
+    <string name="vk_turn_udp">Use UDP transport to TURN</string>
+    <string name="vk_turn_udp_sum">If disabled, the TURN client uses TCP transport. The local VLESS listener remains TCP either way.</string>
+    <string name="vk_turn_dns">Client DNS override</string>
+    <string name="vk_turn_allocs_per_stream">Allocs per stream</string>
+    <string name="vk_turn_session_id">Fixed session ID</string>
+    <string name="vk_turn_no_dtls">Disable DTLS obfuscation</string>
+    <string name="vk_turn_no_dtls_sum">Only for compatible direct-mode servers. This is easier to identify and can get the account or relay blocked.</string>
+    <string name="vk_turn_v1">Legacy v1 framing</string>
+    <string name="vk_turn_v1_sum">Use only with old kiper292-compatible servers.</string>
+    <string name="vk_turn_manual_captcha">Manual captcha mode</string>
+    <string name="vk_turn_debug">Debug logging</string>
     <string name="balancer_alive_members">Alive members: %1$d/%2$d</string>
     <string name="balancer_alive_members_short">%1$d/%2$d alive</string>
     <string name="balancer_runtime_status_waiting">No active member yet</string>
     <string name="balancer_runtime_status_observing">Observing %1$d/%2$d alive members</string>
+    <string name="balancer_use_landing_proxy">Use group landing proxy</string>
+    <string name="balancer_use_front_proxy">Use group front proxy</string>
     <string name="chain_settings">Chain settings</string>
     <string name="config_settings">Config settings</string>
     <string name="circular_reference">Circular reference</string>
@@ -492,7 +517,6 @@
     <string name="mtu">MTU</string>
     <string name="experimental_reduced_iv_head_entropy">This is GFWReport\'s proposal for a countermeasure for the random stream like protocol blocking behavior observed on GFW.
 \n\nThis option remap the first 6 bytes of IV to printable characters, it\'s possible for anyone on the privileged network path to identify the protocol when enabled.</string>
-    <string name="action_switch">Switch</string>
     <string name="udp_over_tcp">UDP over TCP</string>
     <string name="tuic_udp_relay_mode">UDP relay mode</string>
     <string name="congestion_control">Congestion control</string>
@@ -502,6 +526,23 @@
     <string name="reality_short_id">REALITY Short ID</string>
     <string name="reality_fingerprint">REALITY uTLS fingerprint</string>
     <string name="wireguard_reserved">Reserved</string>
+    <string name="wireguard_amneziawg">AmneziaWG</string>
+    <string name="amneziawg_jc">Jc - junk packet count</string>
+    <string name="amneziawg_jmin">Jmin - minimum junk size</string>
+    <string name="amneziawg_jmax">Jmax - maximum junk size</string>
+    <string name="amneziawg_s1">S1 - init padding</string>
+    <string name="amneziawg_s2">S2 - response padding</string>
+    <string name="amneziawg_s3">S3 - cookie padding</string>
+    <string name="amneziawg_s4">S4 - transport padding</string>
+    <string name="amneziawg_h1">H1 - init header magic</string>
+    <string name="amneziawg_h2">H2 - response header magic</string>
+    <string name="amneziawg_h3">H3 - cookie header magic</string>
+    <string name="amneziawg_h4">H4 - transport header magic</string>
+    <string name="amneziawg_i1">I1 - init packet transform</string>
+    <string name="amneziawg_i2">I2 - response packet transform</string>
+    <string name="amneziawg_i3">I3 - cookie packet transform</string>
+    <string name="amneziawg_i4">I4 - transport packet transform</string>
+    <string name="amneziawg_i5">I5 - reserved packet transform</string>
     <string name="shadowsocks_2022_implementation">Shadowsocks 2022 implementation</string>
     <string name="bootstrap_dns">Bootstrap DNS</string>
     <string name="use_local_dns_as_bootstrap_dns">Use system DNS as Bootstrap DNS</string>
@@ -661,4 +702,9 @@
     <string name="hysteria_hop_interval_min">Minimum port hopping interval (s)</string>
     <string name="hysteria_hop_interval_max">Maximum port hopping interval (s)</string>
     <string name="hysteria_bbr_profile">BBR profile</string>
+    <string name="require_socks">Enable SOCKS5 inbound</string>
+    <string name="custom_package_name_or_uid">Custom package name or UID</string>
+    <string name="udp" translatable="false">UDP</string>
+    <string name="reality_mldsa65_verify" translatable="false">REALITY mldsa65Verify</string>
+    <string name="socks5_udp_authentication_warning">SOCKS5 UDP is not protected by username/password authentication. If UDP is enabled, the authentication can be bypassed easily.</string>
 </resources>

@@ -30,11 +30,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.takisoft.preferencex.PreferenceFragmentCompat
-import com.takisoft.preferencex.SimpleMenuPreference
 import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.Key.MODE_VPN
 import io.nekohasekai.sagernet.database.DataStore
@@ -43,10 +43,12 @@ import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.privacy.AppDisguiseManager
 import io.nekohasekai.sagernet.privacy.PrivacyHoneypot
 import io.nekohasekai.sagernet.ui.profile.ProfileSettingsActivity.PasswordSummaryProvider
+import io.nekohasekai.sagernet.ui.profile.ProfileSettingsActivity
 import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.utils.Theme
 import io.nekohasekai.sagernet.widget.ColorPickerPreference
 import io.nekohasekai.sagernet.widget.LinkOrContentPreference
+import io.nekohasekai.sagernet.widget.SimpleMenuPreference
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
@@ -119,7 +121,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    override fun onCreatePreferencesFix(savedInstanceState: Bundle?, rootKey: String?) {
+    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         preferenceManager.preferenceDataStore = DataStore.configurationStore
         DataStore.initGlobal()
         addPreferencesFromResource(R.xml.global_preferences)
@@ -128,6 +130,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         isProxyApps = findPreference(Key.PROXY_APPS)!!
         val bypassLan = findPreference<SwitchPreference>(Key.BYPASS_LAN)!!
         val requireHttp = findPreference<SwitchPreference>(Key.REQUIRE_HTTP)!!
+        val httpUsername = findPreference<EditTextPreference>(Key.HTTP_USERNAME)!!
+        val httpPassword = findPreference<EditTextPreference>(Key.HTTP_PASSWORD)!!
         val appendHttpProxy = findPreference<SwitchPreference>(Key.APPEND_HTTP_PROXY)!!
         val httpProxyException = findPreference<EditTextPreference>(Key.HTTP_PROXY_EXCEPTION)!!
 
@@ -141,8 +145,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
-        findPreference<SimpleMenuPreference>(Key.NIGHT_THEME)!!.setOnPreferenceChangeListener { _, newTheme ->
-            Theme.currentNightMode = (newTheme as String).toInt()
+        findPreference<ListPreference>(Key.NIGHT_THEME)!!.setOnPreferenceChangeListener { _, newValue ->
+            Theme.currentNightMode = (newValue as String).toInt()
             Theme.applyNightTheme()
             requireActivity().apply {
                 ActivityCompat.recreate(this)
@@ -169,7 +173,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 else -> Locale.forLanguageTag(code).displayName // just a fallback name from Java
             }
         }
-        val appLanguage = findPreference<SimpleMenuPreference>(Key.APP_LANGUAGE)!!
+        val appLanguage = findPreference<ListPreference>(Key.APP_LANGUAGE)!!
         val locale = when (val value = AppCompatDelegate.getApplicationLocales().toLanguageTags()) {
             // https://stackoverflow.com/questions/13291578/how-to-localize-an-android-app-in-indonesian-language
             // Some old Android versions still return "in".
@@ -186,8 +190,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
-        val serviceMode = findPreference<SimpleMenuPreference>(Key.SERVICE_MODE)!!
-        val tunImplementation = findPreference<SimpleMenuPreference>(Key.TUN_IMPLEMENTATION)!!
+        val serviceMode = findPreference<ListPreference>(Key.SERVICE_MODE)!!
+        val tunImplementation = findPreference<ListPreference>(Key.TUN_IMPLEMENTATION)!!
         val mtu = findPreference<EditTextPreference>(Key.MTU)!!
         val enableVPNInterfaceIPv6Address = findPreference<SwitchPreference>(Key.ENABLE_VPN_INTERFACE_IPV6_ADDRESS)!!
         val allowAppsBypassVpn = findPreference<SwitchPreference>(Key.ALLOW_APPS_BYPASS_VPN)!!
@@ -196,6 +200,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         val discardICMP = findPreference<SwitchPreference>(Key.DISCARD_ICMP)!!
         val appTrafficStatistics = findPreference<SwitchPreference>(Key.APP_TRAFFIC_STATISTICS)!!
         serviceMode.setOnPreferenceChangeListener { _, newValue ->
+            newValue as String
             tunImplementation.isEnabled = newValue == MODE_VPN
             mtu.isEnabled = newValue == MODE_VPN
             enableVPNInterfaceIPv6Address.isEnabled = newValue == MODE_VPN
@@ -203,19 +208,23 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 newValue == MODE_VPN && !DataStore.privacyBlockVpnBypassApi
             discardICMP.isEnabled = newValue == MODE_VPN
             meteredNetwork.isEnabled = newValue == MODE_VPN
-            enablePcap.isEnabled = newValue == MODE_VPN && tunImplementation.value == "${TunImplementation.GVISOR}"
+            enablePcap.isEnabled = newValue == MODE_VPN && tunImplementation.value.toInt() == TunImplementation.GVISOR
             appTrafficStatistics.isEnabled = newValue == MODE_VPN
             isProxyApps.isEnabled = newValue == MODE_VPN
             bypassLan.isEnabled = newValue == MODE_VPN
-            appendHttpProxy.isEnabled =
-                requireHttp.isChecked &&
-                    newValue == MODE_VPN &&
-                    !DataStore.privacyBlockHttpProxyInVpnMode
-            httpProxyException.isEnabled =
-                requireHttp.isChecked &&
-                    newValue == MODE_VPN &&
-                    appendHttpProxy.isChecked &&
-                    !DataStore.privacyBlockHttpProxyInVpnMode
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val canAppendHttpProxy =
+                    requireHttp.isChecked &&
+                        newValue == MODE_VPN &&
+                        !DataStore.privacyBlockHttpProxyInVpnMode &&
+                        !DataStore.privacyRequireHttpInboundAuth &&
+                        httpUsername.isVisible &&
+                        httpUsername.text.isNullOrEmpty() &&
+                        httpPassword.isVisible &&
+                        httpPassword.text.isNullOrEmpty()
+                appendHttpProxy.isVisible = canAppendHttpProxy
+                httpProxyException.isVisible = canAppendHttpProxy && appendHttpProxy.isChecked
+            }
             if (SagerNet.started) {
                 SagerNet.stopService()
                 runOnMainDispatcher {
@@ -227,7 +236,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         }
         tunImplementation.isEnabled = serviceMode.value == MODE_VPN
         tunImplementation.setOnPreferenceChangeListener { _, newValue ->
-            enablePcap.isEnabled = serviceMode.value == MODE_VPN && newValue == "${TunImplementation.GVISOR}"
+            enablePcap.isEnabled = serviceMode.value == MODE_VPN && (newValue as String).toInt() == TunImplementation.GVISOR
             if (SagerNet.started) {
                 SagerNet.stopService()
                 runOnMainDispatcher {
@@ -249,7 +258,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         }
         meteredNetwork.isEnabled = serviceMode.value == MODE_VPN
         meteredNetwork.onPreferenceChangeListener = reloadListener
-        enablePcap.isEnabled = serviceMode.value == MODE_VPN && tunImplementation.value == "${TunImplementation.GVISOR}"
+        enablePcap.isEnabled = serviceMode.value == MODE_VPN && tunImplementation.value.toInt() == TunImplementation.GVISOR
         enablePcap.setOnPreferenceChangeListener { _, newValue ->
             if (newValue as Boolean) {
                 val path = File(
@@ -298,7 +307,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         showDirectSpeed.isEnabled = profileTrafficStatistics.isChecked
         showDirectSpeed.onPreferenceChangeListener = reloadListener
 
-        findPreference<SimpleMenuPreference>(Key.LOG_LEVEL)!!.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<ListPreference>(Key.LOG_LEVEL)!!.setOnPreferenceChangeListener { _, newValue ->
             if ((newValue as String).toInt() == LogLevel.DEBUG && !DataStore.logLevelDebugWarningDisable) {
                 MaterialAlertDialogBuilder(requireContext()).apply {
                     setMessage(R.string.debug_log_sum)
@@ -312,7 +321,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
-        findPreference<SimpleMenuPreference>(Key.PROVIDER_ROOT_CA)!!.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<ListPreference>(Key.PROVIDER_ROOT_CA)!!.setOnPreferenceChangeListener { _, newValue ->
            if ((newValue as String).toInt() == RootCAProvider.CUSTOM) {
                 runOnMainDispatcher {
                     val context = requireContext()
@@ -355,11 +364,11 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         hijackDns.isEnabled = trafficSniffing.isChecked
         hijackDns.onPreferenceChangeListener = reloadListener
 
-        findPreference<SimpleMenuPreference>(Key.OUTBOUND_DOMAIN_STRATEGY)!!.onPreferenceChangeListener = reloadListener
-        findPreference<SimpleMenuPreference>(Key.OUTBOUND_DOMAIN_STRATEGY_FOR_DIRECT)!!.onPreferenceChangeListener = reloadListener
-        findPreference<SimpleMenuPreference>(Key.OUTBOUND_DOMAIN_STRATEGY_FOR_SERVER)!!.onPreferenceChangeListener = reloadListener
+        findPreference<ListPreference>(Key.OUTBOUND_DOMAIN_STRATEGY)!!.onPreferenceChangeListener = reloadListener
+        findPreference<ListPreference>(Key.OUTBOUND_DOMAIN_STRATEGY_FOR_DIRECT)!!.onPreferenceChangeListener = reloadListener
+        findPreference<ListPreference>(Key.OUTBOUND_DOMAIN_STRATEGY_FOR_SERVER)!!.onPreferenceChangeListener = reloadListener
 
-        val rulesProvider = findPreference<SimpleMenuPreference>(Key.RULES_PROVIDER)!!
+        val rulesProvider = findPreference<ListPreference>(Key.RULES_PROVIDER)!!
         val rulesGeositeUrl = findPreference<LinkOrContentPreference>(Key.RULES_GEOSITE_URL)!!
         val rulesGeoipUrl = findPreference<LinkOrContentPreference>(Key.RULES_GEOIP_URL)!!
         rulesProvider.setOnPreferenceChangeListener { _, newValue ->
@@ -477,7 +486,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         // protocol settings
         val enableFragment = findPreference<SwitchPreference>(Key.ENABLE_FRAGMENT)!!
         val enableFragmentForDirect = findPreference<SwitchPreference>(Key.ENABLE_FRAGMENT_FOR_DIRECT)!!
-        val fragmentMethod = findPreference<SimpleMenuPreference>(Key.FRAGMENT_METHOD)!!
+        val fragmentMethod = findPreference<ListPreference>(Key.FRAGMENT_METHOD)!!
         enableFragment.setOnPreferenceChangeListener { _, newValue ->
             newValue as Boolean
             enableFragmentForDirect.isVisible = newValue
@@ -489,7 +498,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
 
         // DNS settings
         findPreference<EditTextPreference>(Key.REMOTE_DNS)!!.onPreferenceChangeListener = reloadListener
-        findPreference<SimpleMenuPreference>(Key.REMOTE_DNS_QUERY_STRATEGY)!!.onPreferenceChangeListener = reloadListener
+        findPreference<ListPreference>(Key.REMOTE_DNS_QUERY_STRATEGY)!!.onPreferenceChangeListener = reloadListener
         findPreference<EditTextPreference>(Key.EDNS_CLIENT_IP)!!.onPreferenceChangeListener = reloadListener
 
         val useLocalDnsAsDirectDns = findPreference<SwitchPreference>(Key.USE_LOCAL_DNS_AS_DIRECT_DNS)!!
@@ -501,7 +510,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
         directDns.isEnabled = !useLocalDnsAsDirectDns.isChecked
-        findPreference<SimpleMenuPreference>(Key.DIRECT_DNS_QUERY_STRATEGY)!!.onPreferenceChangeListener = reloadListener
+        findPreference<ListPreference>(Key.DIRECT_DNS_QUERY_STRATEGY)!!.onPreferenceChangeListener = reloadListener
 
         val useLocalDnsAsBootstrapDns = findPreference<SwitchPreference>(Key.USE_LOCAL_DNS_AS_BOOTSTRAP_DNS)!!
         val bootstrapDns = findPreference<EditTextPreference>(Key.BOOTSTRAP_DNS)!!
@@ -534,76 +543,184 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        allowAccess.onPreferenceChangeListener = reloadListener
+        val requireSocks = findPreference<SwitchPreference>(Key.REQUIRE_SOCKS)!!
+        val requireTransproxy = findPreference<SwitchPreference>(Key.REQUIRE_TRANSPROXY)!!
+        val requireDns = findPreference<SwitchPreference>(Key.REQUIRE_DNS_INBOUND)!!
+        allowAccess.isVisible = requireSocks.isChecked || requireHttp.isChecked || requireTransproxy.isChecked || requireDns.isChecked
+
         val portSocks5 = findPreference<EditTextPreference>(Key.SOCKS_PORT)!!
         portSocks5.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
+        portSocks5.isVisible = requireSocks.isChecked
         portSocks5.onPreferenceChangeListener = reloadListener
+        val socks5UDP = findPreference<SwitchPreference>(Key.SOCKS_UDP)!!
+        val socks5Username = findPreference<EditTextPreference>(Key.SOCKS_USERNAME)!!
+        socks5Username.isVisible = requireSocks.isChecked
+        socks5Username.setOnPreferenceChangeListener { _, newValue ->
+            newValue as String
+            if (newValue.isNotEmpty() && socks5UDP.isVisible && socks5UDP.isChecked && !DataStore.socksUDPWarningDisable) runOnMainDispatcher {
+                MaterialAlertDialogBuilder(requireContext()).apply {
+                    setMessage(R.string.socks5_udp_authentication_warning)
+                    setPositiveButton(android.R.string.ok, null)
+                    setNeutralButton(R.string.do_not_show_again, { _, _ ->
+                        DataStore.socksUDPWarningDisable = true
+                    })
+                }.show()
+            }
+            needReload()
+            true
+        }
+        val socks5Password = findPreference<EditTextPreference>(Key.SOCKS_PASSWORD)!!
+        socks5Password.summaryProvider = ProfileSettingsActivity.PasswordSummaryProvider
+        socks5Password.isVisible = requireSocks.isChecked
+        socks5Password.setOnPreferenceChangeListener { _, newValue ->
+            newValue as String
+            if (newValue.isNotEmpty() && socks5UDP.isVisible && socks5UDP.isChecked && !DataStore.socksUDPWarningDisable) runOnMainDispatcher {
+                MaterialAlertDialogBuilder(requireContext()).apply {
+                    setMessage(R.string.socks5_udp_authentication_warning)
+                    setPositiveButton(android.R.string.ok, null)
+                    setNeutralButton(R.string.do_not_show_again, { _, _ ->
+                        DataStore.socksUDPWarningDisable = true
+                    })
+                }.show()
+            }
+            needReload()
+            true
+        }
+        socks5UDP.isVisible = requireSocks.isChecked
+        socks5UDP.setOnPreferenceChangeListener { _, newValue ->
+            newValue as Boolean
+            if (newValue
+                && ((socks5Username.isVisible && !socks5Username.text.isNullOrEmpty()) || (socks5Password.isVisible && !socks5Password.text.isNullOrEmpty()))
+                && !DataStore.socksUDPWarningDisable) runOnMainDispatcher {
+                MaterialAlertDialogBuilder(requireContext()).apply {
+                    setMessage(R.string.socks5_udp_authentication_warning)
+                    setPositiveButton(android.R.string.ok, null)
+                    setNeutralButton(R.string.do_not_show_again, { _, _ ->
+                        DataStore.socksUDPWarningDisable = true
+                    })
+                }.show()
+            }
+            needReload()
+            true
+        }
+        requireSocks.setOnPreferenceChangeListener { _, newValue ->
+            portSocks5.isVisible = newValue as Boolean
+            socks5Username.isVisible = newValue
+            socks5Password.isVisible = newValue
+            socks5UDP.isVisible = newValue
+            allowAccess.isVisible = newValue || requireHttp.isChecked || requireTransproxy.isChecked || requireDns.isChecked
+            needReload()
+            true
+        }
 
         val portHttp = findPreference<EditTextPreference>(Key.HTTP_PORT)!!
         portHttp.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
-        portHttp.isEnabled = requireHttp.isChecked
+        portHttp.isVisible = requireHttp.isChecked
         portHttp.onPreferenceChangeListener = reloadListener
+        httpUsername.isVisible = requireHttp.isChecked
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            httpUsername.onPreferenceChangeListener = reloadListener
+        } else {
+            httpUsername.onPreferenceChangeListener = { _, newValue ->
+                newValue as String
+                appendHttpProxy.isVisible = serviceMode.value == MODE_VPN && newValue.isEmpty() && httpPassword.isVisible && httpPassword.text.isNullOrEmpty()
+                httpProxyException.isVisible = serviceMode.value == MODE_VPN && newValue.isEmpty()
+                        && appendHttpProxy.isVisible && appendHttpProxy.isChecked
+                        && newValue.isEmpty() && httpPassword.isVisible && httpPassword.text.isNullOrEmpty()
+                needReload()
+                true
+            }
+        }
+        httpPassword.summaryProvider = ProfileSettingsActivity.PasswordSummaryProvider
+        httpPassword.isVisible = requireHttp.isChecked
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            httpPassword.onPreferenceChangeListener = reloadListener
+        } else {
+            httpPassword.onPreferenceChangeListener = { _, newValue ->
+                newValue as String
+                appendHttpProxy.isVisible = serviceMode.value == MODE_VPN && newValue.isEmpty() && httpUsername.isVisible && httpUsername.text.isNullOrEmpty()
+                httpProxyException.isVisible = serviceMode.value == MODE_VPN && newValue.isEmpty()
+                        && appendHttpProxy.isVisible && appendHttpProxy.isChecked
+                        && newValue.isEmpty() && httpUsername.isVisible && httpUsername.text.isNullOrEmpty()
+                needReload()
+                true
+            }
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             requireHttp.setOnPreferenceChangeListener { _, newValue ->
-                portHttp.isEnabled = newValue as Boolean
+                portHttp.isVisible = newValue as Boolean
+                httpUsername.isVisible = newValue
+                httpPassword.isVisible = newValue
+                allowAccess.isVisible = requireSocks.isChecked || newValue || requireTransproxy.isChecked || requireDns.isChecked
                 needReload()
                 true
             }
             appendHttpProxy.remove()
             httpProxyException.remove()
         } else {
-            fun updateHttpProxyPrefs(blockInVpn: Boolean) {
-                val enableHttpProxySettings =
+            fun updateHttpProxyPrefs() {
+                val canAppendHttpProxy =
                     requireHttp.isChecked &&
                         serviceMode.value == MODE_VPN &&
-                        !blockInVpn
-                appendHttpProxy.isEnabled = enableHttpProxySettings
-                httpProxyException.isEnabled =
-                    enableHttpProxySettings && appendHttpProxy.isChecked
+                        !privacyBlockHttpProxyInVpnMode.isChecked &&
+                        !privacyRequireHttpInboundAuth.isChecked &&
+                        httpUsername.isVisible &&
+                        httpUsername.text.isNullOrEmpty() &&
+                        httpPassword.isVisible &&
+                        httpPassword.text.isNullOrEmpty()
+                appendHttpProxy.isVisible = canAppendHttpProxy
+                httpProxyException.isVisible = canAppendHttpProxy && appendHttpProxy.isChecked
             }
             requireHttp.setOnPreferenceChangeListener { _, newValue ->
-                portHttp.isEnabled = newValue as Boolean
-                updateHttpProxyPrefs(privacyBlockHttpProxyInVpnMode.isChecked)
+                portHttp.isVisible = newValue as Boolean
+                httpUsername.isVisible = newValue
+                httpPassword.isVisible = newValue
+                updateHttpProxyPrefs()
+                allowAccess.isVisible = requireSocks.isChecked || newValue || requireTransproxy.isChecked || requireDns.isChecked
                 needReload()
                 true
             }
-            updateHttpProxyPrefs(privacyBlockHttpProxyInVpnMode.isChecked)
+            updateHttpProxyPrefs()
             appendHttpProxy.setOnPreferenceChangeListener { _, newValue ->
-                httpProxyException.isEnabled =
-                    newValue as Boolean &&
-                        requireHttp.isChecked &&
-                        serviceMode.value == MODE_VPN &&
-                        !privacyBlockHttpProxyInVpnMode.isChecked
+                httpProxyException.isVisible = newValue as Boolean && appendHttpProxy.isVisible
                 needReload()
                 true
             }
-            privacyBlockHttpProxyInVpnMode.setOnPreferenceChangeListener { _, newValue ->
-                updateHttpProxyPrefs(newValue as Boolean)
+            privacyBlockHttpProxyInVpnMode.setOnPreferenceChangeListener { _, _ ->
+                updateHttpProxyPrefs()
+                needReload()
+                true
+            }
+            privacyRequireHttpInboundAuth.setOnPreferenceChangeListener { _, newValue ->
+                updateLocalProxyAuthInputs(localSocks5Auth.isChecked, newValue as Boolean)
+                updateHttpProxyPrefs()
                 needReload()
                 true
             }
             httpProxyException.onPreferenceChangeListener = reloadListener
         }
 
-        val requireTransproxy = findPreference<SwitchPreference>(Key.REQUIRE_TRANSPROXY)!!
         val transproxyPort = findPreference<EditTextPreference>(Key.TRANSPROXY_PORT)!!
         requireTransproxy.setOnPreferenceChangeListener { _, newValue ->
-            transproxyPort.isEnabled = newValue as Boolean
+            transproxyPort.isVisible = newValue as Boolean
+            allowAccess.isVisible = requireSocks.isChecked || requireHttp.isChecked || newValue || requireDns.isChecked
             needReload()
             true
         }
         transproxyPort.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
-        transproxyPort.isEnabled = requireTransproxy.isChecked
+        transproxyPort.isVisible = requireTransproxy.isChecked
         transproxyPort.onPreferenceChangeListener = reloadListener
 
-        val requireDns = findPreference<SwitchPreference>(Key.REQUIRE_DNS_INBOUND)!!
         val portLocalDns = findPreference<EditTextPreference>(Key.LOCAL_DNS_PORT)!!
         requireDns.setOnPreferenceChangeListener { _, newValue ->
-            portLocalDns.isEnabled = newValue as Boolean
+            portLocalDns.isVisible = newValue as Boolean
+            allowAccess.isVisible = requireSocks.isChecked || requireHttp.isChecked || requireTransproxy.isChecked || newValue
             needReload()
             true
         }
         portLocalDns.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
-        portLocalDns.isEnabled = requireDns.isChecked
+        portLocalDns.isVisible = requireDns.isChecked
         portLocalDns.onPreferenceChangeListener = reloadListener
 
         findPreference<EditTextPreference>(Key.PPROF_SERVER)!!.apply {
@@ -616,7 +733,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         // misc settings
         findPreference<SwitchPreference>(Key.SHOW_GROUP_NAME)!!.onPreferenceChangeListener = reloadListener
         findPreference<SwitchPreference>(Key.ACQUIRE_WAKE_LOCK)!!.onPreferenceChangeListener = reloadListener
-        findPreference<SimpleMenuPreference>(Key.FAB_STYLE)!!.setOnPreferenceChangeListener { _, _ ->
+        findPreference<ListPreference>(Key.FAB_STYLE)!!.setOnPreferenceChangeListener { _, _ ->
             requireActivity().apply {
                 this.finish()
                 startActivity(intent)

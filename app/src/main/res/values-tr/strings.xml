@@ -66,7 +66,6 @@
     <string name="group_create">Grup oluştur</string>
     <string name="group_subscription_link">Abonelik Linki</string>
     <string name="group_update">Güncelle</string>
-    <string name="tile_title">Değiştirici</string>
     <string name="group_name">Grup adı</string>
     <string name="quick_toggle">Aç/Kapat</string>
     <string name="group_default">Gruplandırılmamış</string>
@@ -370,4 +369,5 @@
     <string name="insecure_warn">Güvenlik Danışmanlığı</string>
     <string name="ws_max_early_data">Maximum Erken Veri</string>
     <string name="hijack_dns_message">DNS sniffer kullanarak TUN DNS adresine gönderilmeyen DNS sorgularını ele geçir</string>
+    <string name="require_socks">SOCKS üzerinden istekleri etkinleştir</string>
 </resources>

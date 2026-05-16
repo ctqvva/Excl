@@ -11,7 +11,7 @@
         app:key="balancerRuntimeStatus"
         app:title="@string/balancer_current_member" />
 
-    <com.takisoft.preferencex.SimpleMenuPreference
+    <io.nekohasekai.sagernet.widget.SimpleMenuPreference
         app:defaultValue="0"
         app:entries="@array/balancer_type"
         app:entryValues="@array/int_array_2"
@@ -20,7 +20,7 @@
         app:title="@string/balancer_type"
         app:useSimpleSummaryProvider="true" />
 
-    <com.takisoft.preferencex.SimpleMenuPreference
+    <io.nekohasekai.sagernet.widget.SimpleMenuPreference
         app:entries="@array/balancer_strategy_entry"
         app:entryValues="@array/balancer_strategy_value"
         app:icon="@drawable/ic_baseline_compare_arrows_24"
@@ -33,6 +33,18 @@
         app:key="balancerGroup"
         app:title="@string/menu_group"
         app:useSimpleSummaryProvider="true" />
+
+    <SwitchPreference
+        app:defaultValue="false"
+        app:icon="@drawable/ic_hardware_router"
+        app:key="balancerUseFrontProxy"
+        app:title="@string/balancer_use_front_proxy" />
+
+    <SwitchPreference
+        app:defaultValue="false"
+        app:icon="@drawable/baseline_public_24"
+        app:key="balancerUseLandingProxy"
+        app:title="@string/balancer_use_landing_proxy" />
 
     <EditTextPreference
         app:icon="@drawable/ic_action_delete"

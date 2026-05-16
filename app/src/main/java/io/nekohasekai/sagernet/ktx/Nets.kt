@@ -187,7 +187,7 @@ fun String.toHysteriaPort(disallowFromGreaterThanTo: Boolean = false): Int {
     error("invalid port range")
 }
 
-const val USER_AGENT = "Exclave/${BuildConfig.VERSION_NAME}"
+const val USER_AGENT = "Excl/${BuildConfig.VERSION_NAME}"
 
 // Taken from https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/blob/main/client/torrc with unsupported servers removed.
 val PUBLIC_STUN_SERVERS = arrayOf(

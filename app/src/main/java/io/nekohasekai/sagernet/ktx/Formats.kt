@@ -36,6 +36,8 @@ import io.nekohasekai.sagernet.fmt.ssh.parseSSH
 import io.nekohasekai.sagernet.fmt.trusttunnel.parseTrustTunnel
 import io.nekohasekai.sagernet.fmt.tuic5.parseTuic
 import io.nekohasekai.sagernet.fmt.v2ray.parseV2Ray
+import io.nekohasekai.sagernet.fmt.vkturn.parseVkTurn
+import io.nekohasekai.sagernet.fmt.wireguard.parseAmneziaVpn
 import io.nekohasekai.sagernet.fmt.wireguard.parseWireGuard
 import java.io.ByteArrayOutputStream
 import java.util.zip.Deflater
@@ -117,6 +119,10 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             runCatching {
                 entities.add(parseWireGuard(this))
             }
+        } else if (startsWith("vpn://", ignoreCase = true)) {
+            runCatching {
+                entities.addAll(parseAmneziaVpn(this))
+            }
         } else if (startsWith("mierus://", ignoreCase = true)) {
             runCatching {
                 entities.addAll(parseMieru(this))
@@ -136,6 +142,12 @@ fun parseShareLinks(text: String): List<AbstractBean> {
         } else if (startsWith("tt://", ignoreCase = true)) {
             runCatching {
                 entities.addAll(parseTrustTunnel(this))
+            }
+        } else if (startsWith("vkturn://", ignoreCase = true)
+            || startsWith("vkt://", ignoreCase = true)
+            || startsWith("goodturn://", ignoreCase = true)) {
+            runCatching {
+                entities.add(parseVkTurn(this))
             }
         }
     }

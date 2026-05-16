@@ -468,6 +468,14 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_new_wg -> {
                 startActivity(Intent(requireActivity(), WireGuardSettingsActivity::class.java))
             }
+            R.id.action_new_awg -> {
+                startActivity(Intent(requireActivity(), WireGuardSettingsActivity::class.java).apply {
+                    putExtra(WireGuardSettingsActivity.EXTRA_AMNEZIAWG_PROFILE, true)
+                })
+            }
+            R.id.action_new_vk_turn -> {
+                startActivity(Intent(requireActivity(), VkTurnSettingsActivity::class.java))
+            }
             R.id.action_new_shadowtls -> {
                 startActivity(Intent(requireActivity(), ShadowTLSSettingsActivity::class.java))
             }
@@ -1352,12 +1360,14 @@ class ConfigurationFragment @JvmOverloads constructor(
             override suspend fun onUpdated(profileId: Long, trafficStats: TrafficStats) {
                 val index = configurationIdList.indexOf(profileId)
                 if (index != -1) {
-                    val holder = layoutManager.findViewByPosition(index)
-                        ?.let { configurationListView.getChildViewHolder(it) } as ConfigurationHolder?
-                    if (holder != null) {
-                        holder.entity.stats = trafficStats
+                    val profile = configurationList[profileId]
+                    if (profile != null) {
+                        profile.stats = trafficStats
                         onMainDispatcher {
-                            holder.bind(holder.entity)
+                            val holder = configurationListView.findViewHolderForAdapterPosition(index) as? ConfigurationHolder
+                            if (holder != null && holder.entity.id == profileId) {
+                                holder.updateTraffic(profile)
+                            }
                         }
                     }
                 }
@@ -1546,40 +1556,40 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
                 if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
-                    address = when {
-                        balancerSnapshot != null -> {
+                    address = buildList {
+                        add(
                             getString(
                                 R.string.balancer_current_member_value,
-                                balancerSnapshot.activeProfileName
+                                balancerSnapshot?.activeProfileName
+                                    ?: getString(R.string.balancer_current_member_pending)
+                            )
+                        )
+                        balancerHint?.preferredMemberName?.let {
+                            add(getString(R.string.balancer_preferred_member_value, it))
+                        }
+                        if (balancerHint != null && balancerHint.totalMembers > 0) {
+                            add(
+                                getString(
+                                    R.string.balancer_alive_members,
+                                    balancerHint.aliveMembers,
+                                    balancerHint.totalMembers
+                                )
                             )
                         }
-                        balancerHint?.preferredMemberName != null -> {
-                            getString(
-                                R.string.balancer_preferred_member_value,
-                                balancerHint.preferredMemberName
-                            )
+                        if (isEmpty() && address.isNotEmpty()) {
+                            add(address)
                         }
-                        balancerHint != null && balancerHint.totalMembers > 0 -> {
-                            getString(
-                                R.string.balancer_alive_members,
-                                balancerHint.aliveMembers,
-                                balancerHint.totalMembers
-                            )
-                        }
-                        SagerNet.started -> {
-                            getString(R.string.balancer_current_member_waiting)
-                        }
-                        else -> {
-                            address
-                        }
-                    }
+                    }.joinToString("\n")
                 }
 
                 profileAddress.text = address
                 (trafficText.parent as View).isGone = (!showTraffic || proxyEntity.status <= 0) && address.isEmpty()
 
                 if (balancerSnapshot != null) {
-                    profileStatus.setText(R.string.balancer_active)
+                    profileStatus.text = getString(
+                        R.string.balancer_connected_via,
+                        balancerSnapshot.activeProfileName,
+                    )
                     profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
                 } else if (
                     proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
@@ -1613,7 +1623,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                if (proxyEntity.status == 3) {
+                if (proxyEntity.status == 3 && proxyEntity.type != ProxyEntity.TYPE_BALANCER) {
                     profileStatus.setText(R.string.unavailable)
                     profileStatus.setOnClickListener {
                         alert(proxyEntity.error ?: "<?>").show()
@@ -1701,6 +1711,49 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
+            }
+
+            fun updateTraffic(proxyEntity: ProxyEntity) {
+                val parent = parent ?: return
+                if (!::entity.isInitialized) return
+
+                entity.stats = proxyEntity.stats
+
+                var rx = proxyEntity.rx
+                var tx = proxyEntity.tx
+
+                val stats = proxyEntity.stats
+                if (stats != null) {
+                    rx += stats.rxTotal
+                    tx += stats.txTotal
+                }
+
+                val showTraffic = rx + tx != 0L
+                trafficText.isVisible = showTraffic
+                if (showTraffic) {
+                    trafficText.text = view.context.getString(
+                        R.string.traffic,
+                        FormatFileSizeCompat.formatFileSize(view.context, tx, DataStore.useIECUnit),
+                        FormatFileSizeCompat.formatFileSize(view.context, rx, DataStore.useIECUnit)
+                    )
+                }
+
+                var address = proxyEntity.displayAddress()
+                if (proxyEntity.requireBean().name.isEmpty() || !parent.alwaysShowAddress) {
+                    address = ""
+                }
+
+                (trafficText.parent as View).isGone = (!showTraffic || proxyEntity.status <= 0) && address.isEmpty()
+
+                if (proxyEntity.status <= 0) {
+                    if (showTraffic) {
+                        profileStatus.text = trafficText.text
+                        profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
+                        trafficText.text = ""
+                    } else {
+                        profileStatus.text = ""
+                    }
+                }
             }
 
             fun showCode(link: String) {

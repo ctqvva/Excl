@@ -575,6 +575,13 @@ class MainActivity : ThemedActivity(),
     override fun trafficUpdated(profileId: Long, stats: TrafficStats, isCurrent: Boolean) {
         if (profileId == 0L) return
 
+        if (isCurrent && stats.activeBalancerMemberId > 0L && stats.activeBalancerMemberName.isNotEmpty()) {
+            BalancerRuntimeState.update(
+                profileId,
+                stats.activeBalancerMemberId,
+                stats.activeBalancerMemberName,
+            )
+        }
         if (isCurrent) binding.stats.updateTraffic(
             stats.txRateProxy, stats.rxRateProxy
         )

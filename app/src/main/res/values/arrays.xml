@@ -369,6 +369,26 @@
         <item>v2ray_outbound</item>
     </string-array>
 
+    <string-array name="vk_turn_mode_entry">
+        <item>WireGuard</item>
+        <item>VLESS</item>
+    </string-array>
+    <string-array name="vk_turn_mode_value">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+
+    <string-array name="vk_turn_provider_entry">
+        <item>VK Calls</item>
+        <item>Yandex Telemost</item>
+        <item>WB Stream</item>
+    </string-array>
+    <string-array name="vk_turn_provider_value">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
     <string-array name="night_mode">
         <item>@string/follow_system</item>
         <item>@string/enable</item>
@@ -900,6 +920,13 @@
         <item>standard</item>
         <item>conservative</item>
         <item>aggressive</item>
+    </string-array>
+
+    <string-array name="shadowquic_congestion_control_value">
+        <item>bbr</item>
+        <item>cubic</item>
+        <item>new-reno</item>
+        <item>brutal</item>
     </string-array>
 
 </resources>

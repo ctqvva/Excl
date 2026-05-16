@@ -52,9 +52,32 @@ import io.nekohasekai.sagernet.fmt.v2ray.supportedVlessFlow
 import io.nekohasekai.sagernet.fmt.v2ray.supportedVmessMethod
 import io.nekohasekai.sagernet.fmt.v2ray.supportedXhttpMode
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
+import io.nekohasekai.sagernet.fmt.wireguard.putAmneziaOption
 import io.nekohasekai.sagernet.ktx.*
 import libsagernetcore.Libsagernetcore
 import java.util.Base64
+
+private val V2RAY_AMNEZIA_WG_OPTION_KEYS = listOf("jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4", "i1", "i2", "i3", "i4", "i5")
+
+private fun WireGuardBean.applyV2RayAmneziaOptions(settings: JsonObject) {
+    fun applyFrom(options: JsonObject?) {
+        options ?: return
+        V2RAY_AMNEZIA_WG_OPTION_KEYS.forEach { key ->
+            val titleKey = key.replaceFirstChar { it.uppercase() }
+            putAmneziaOption(
+                key,
+                options.getString(key)
+                    ?: options.getString(titleKey)
+                    ?: options.getString(key.uppercase())
+                    ?: options.getInt(key)?.toString()
+                    ?: options.getInt(titleKey)?.toString()
+                    ?: options.getInt(key.uppercase())?.toString()
+            )
+        }
+    }
+    applyFrom(settings)
+    applyFrom(settings.getObject("amnezia") ?: settings.getObject("amneziaWG") ?: settings.getObject("amnezia_wg"))
+}
 
 fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
     // v2ray JSONv4 config, Xray config and JSONv4 config of Exclave's v2ray fork only
@@ -152,24 +175,27 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                         v2rayBean.allowInsecure = true
                                     }
                                 }
-                                /*tlsSettings.getString("echDohServer")?.also {
-                                    v2rayBean.echEnabled = true
-                                }
-                                tlsSettings.getString("echConfig")?.also {
-                                    v2rayBean.echEnabled = true
-                                    v2rayBean.echConfig = it
-                                }
-                                tlsSettings.getString("echConfigList")?.also {
-                                    v2rayBean.echEnabled = true
-                                    try {
-                                        Base64.getDecoder().decode(it)
+                                if (v2rayBean is VLESSBean) {
+                                    // Only parse ECH for shit VLESS free nodes
+                                    tlsSettings.getString("echDohServer")?.also {
+                                        v2rayBean.echEnabled = true
+                                    }
+                                    tlsSettings.getString("echConfig")?.also {
+                                        v2rayBean.echEnabled = true
                                         v2rayBean.echConfig = it
-                                    } catch (_: Exception) {}
+                                    }
+                                    tlsSettings.getString("echConfigList")?.also {
+                                        v2rayBean.echEnabled = true
+                                        try {
+                                            Base64.getDecoder().decode(it)
+                                            v2rayBean.echConfig = it
+                                        } catch (_: Exception) {}
+                                    }
+                                    tlsSettings.getObject("ech")?.also {
+                                        v2rayBean.echEnabled = it.getBoolean("enabled")
+                                        v2rayBean.echConfig = it.getString("config")
+                                    }
                                 }
-                                tlsSettings.getObject("ech")?.also {
-                                    v2rayBean.echEnabled = it.getBoolean("enabled")
-                                    v2rayBean.echConfig = it.getString("config")
-                                }*/
                             }
                         }
                         "reality" -> {
@@ -186,6 +212,9 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                 }
                                 realitySettings.getString("shortId")?.also {
                                     v2rayBean.realityShortId = it
+                                }
+                                realitySettings.getString("mldsa65Verify")?.also {
+                                    v2rayBean.realityMldsa65Verify = it
                                 }
                             }
                         }
@@ -1647,6 +1676,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         wireguardBean.reserved = listOf(it[0].toString(), it[1].toString(), it[2].toString()).joinToString(",")
                     }
                 }
+                wireguardBean.applyV2RayAmneziaOptions(settings)
                 settings.getArray("peers")?.forEach { peer ->
                     beanList.add(wireguardBean.applyDefaultValues().clone().apply {
                         peer.getString("endpoint")?.also { endpoint ->

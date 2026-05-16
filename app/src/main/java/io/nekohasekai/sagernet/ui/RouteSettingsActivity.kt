@@ -36,12 +36,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.PreferenceDataStore
+import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.takisoft.preferencex.PreferenceFragmentCompat
-import com.takisoft.preferencex.SimpleMenuPreference
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
@@ -50,6 +50,7 @@ import io.nekohasekai.sagernet.database.RuleEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeListener
 import io.nekohasekai.sagernet.ktx.Logs
+import io.nekohasekai.sagernet.ktx.listByLineOrComma
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ktx.runOnMainDispatcher
@@ -110,6 +111,7 @@ class RouteSettingsActivity(
         DataStore.routeReverse = reverse
         DataStore.routeRedirect = redirect
         DataStore.routePackages = packages.joinToString("\n")
+        DataStore.routeCustomPackageNameOrUid = customPackageNames.joinToString("\n")
         DataStore.routeNetworkType = networkType
         DataStore.routeSSID = ssid
     }
@@ -133,6 +135,7 @@ class RouteSettingsActivity(
         reverse = DataStore.routeReverse
         redirect = DataStore.routeRedirect
         packages = DataStore.routePackages.split("\n").filter { it.isNotEmpty() }
+        customPackageNames = DataStore.routeCustomPackageNameOrUid.listByLineOrComma()
         networkType = DataStore.routeNetworkType
         ssid = DataStore.routeSSID
 
@@ -143,7 +146,7 @@ class RouteSettingsActivity(
 
     fun needSave(): Boolean {
         if (!dirty) return false
-        if (DataStore.routePackages.isEmpty() && DataStore.routeDomain.isEmpty() && DataStore.routeIP.isEmpty() && DataStore.routePort.isEmpty() && DataStore.routeSourcePort.isEmpty() && DataStore.routeNetwork.isEmpty() && DataStore.routeSource.isEmpty() && DataStore.routeProtocol.isEmpty() && DataStore.routeAttrs.isEmpty() && !(DataStore.routeReverse && DataStore.routeRedirect.isEmpty()) && DataStore.routeNetworkType.isEmpty()) {
+        if (DataStore.routePackages.isEmpty() && DataStore.routeCustomPackageNameOrUid.isEmpty() && DataStore.routeDomain.isEmpty() && DataStore.routeIP.isEmpty() && DataStore.routePort.isEmpty() && DataStore.routeSourcePort.isEmpty() && DataStore.routeNetwork.isEmpty() && DataStore.routeSource.isEmpty() && DataStore.routeProtocol.isEmpty() && DataStore.routeAttrs.isEmpty() && !(DataStore.routeReverse && DataStore.routeRedirect.isEmpty()) && DataStore.routeNetworkType.isEmpty()) {
             return false
         }
         return true
@@ -182,10 +185,11 @@ class RouteSettingsActivity(
         apps.postUpdate()
     }
 
-    lateinit var outbound: SimpleMenuPreference
+    lateinit var outbound: ListPreference
     lateinit var reverse: SwitchPreference
     lateinit var redirect: EditTextPreference
     lateinit var apps: AppListPreference
+    lateinit var customPackageNames: EditTextPreference
     lateinit var networkType: MultiSelectListPreference
     lateinit var ssid: EditTextPreference
 
@@ -196,8 +200,15 @@ class RouteSettingsActivity(
         reverse = findPreference(Key.ROUTE_REVERSE)!!
         redirect = findPreference(Key.ROUTE_REDIRECT)!!
         apps = findPreference(Key.ROUTE_PACKAGES)!!
+        customPackageNames = findPreference(Key.ROUTE_CUSTOM_PACKAGE_NAME_OR_UID)!!
         networkType = findPreference(Key.ROUTE_NETWORK_TYPE)!!
         ssid = findPreference(Key.ROUTE_SSID)!!
+
+        apps.isEnabled = customPackageNames.text.isNullOrEmpty()
+        customPackageNames.setOnPreferenceChangeListener { _, newValue ->
+            apps.isEnabled = (newValue as String).isEmpty()
+            true
+        }
 
         fun updateReverse(enabled: Boolean = outbound.value == "3") {
             reverse.isVisible = enabled
@@ -436,7 +447,7 @@ class RouteSettingsActivity(
         val activity: RouteSettingsActivity
             get() = requireActivity() as RouteSettingsActivity
 
-        override fun onCreatePreferencesFix(savedInstanceState: Bundle?, rootKey: String?) {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             preferenceManager.preferenceDataStore = DataStore.profileCacheStore
             try {
                 activity.apply {

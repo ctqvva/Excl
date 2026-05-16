@@ -30,7 +30,6 @@ import androidx.core.view.updatePadding
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
-import io.nekohasekai.sagernet.TunImplementation
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.databinding.LayoutStunBinding
 import io.nekohasekai.sagernet.ktx.PUBLIC_STUN_SERVERS
@@ -115,21 +114,13 @@ class StunActivity : ThemedActivity() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
-            val dnsPort = if (
-                DataStore.requireDnsInbound &&
-                !(DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockDnsInboundInVpnMode)
-            ) {
-                DataStore.localDNSPort
-            } else {
-                0
+            val stunClient = Libsagernetcore.newStunClient().apply {
+                if (SagerNet.started && DataStore.startedProfile > 0) {
+                    useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
+                    useDNSUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc_dns.sock")
+                }
             }
-            val result = Libsagernetcore.stunTest(
-                binding.natStunServer.text.toString(),
-                SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
-                SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
-                DataStore.socksPort,
-                dnsPort
-            )
+            val result = stunClient.stunTest(binding.natStunServer.text.toString())
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {
                     AlertDialog.Builder(this@StunActivity)
@@ -154,21 +145,13 @@ class StunActivity : ThemedActivity() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
-            val dnsPort = if (
-                DataStore.requireDnsInbound &&
-                !(DataStore.serviceMode == Key.MODE_VPN && DataStore.privacyBlockDnsInboundInVpnMode)
-            ) {
-                DataStore.localDNSPort
-            } else {
-                0
+            val stunClient = Libsagernetcore.newStunClient().apply {
+                if (SagerNet.started && DataStore.startedProfile > 0) {
+                    useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
+                    useDNSUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc_dns.sock")
+                }
             }
-            val result = Libsagernetcore.stunLegacyTest(
-                binding.natStunServer.text.toString(),
-                SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5(),
-                SagerNet.started && DataStore.startedProfile > 0 && DataStore.tunImplementation == TunImplementation.GVISOR,
-                DataStore.socksPort,
-                dnsPort
-            )
+            val result = stunClient.stunLegacyTest(binding.natStunServer.text.toString())
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {
                     AlertDialog.Builder(this@StunActivity)

@@ -272,7 +272,14 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT)
 
+    var requireSocks by configurationStore.boolean(Key.REQUIRE_SOCKS) { true }
+    var socksUsername by configurationStore.string(Key.SOCKS_USERNAME)
+    var socksPassword by configurationStore.string(Key.SOCKS_PASSWORD)
+    var socksUDP by configurationStore.boolean(Key.SOCKS_UDP) { true }
+    var socksUDPWarningDisable by configurationStore.boolean(Key.SOCKS_UDP_WARNING_DISABLE)
     var requireHttp by configurationStore.boolean(Key.REQUIRE_HTTP) { false }
+    var httpUsername by configurationStore.string(Key.HTTP_USERNAME)
+    var httpPassword by configurationStore.string(Key.HTTP_PASSWORD)
     var appendHttpProxy by configurationStore.boolean(Key.APPEND_HTTP_PROXY) { true }
     var httpProxyException by configurationStore.string(Key.HTTP_PROXY_EXCEPTION)
     var requireTransproxy by configurationStore.boolean(Key.REQUIRE_TRANSPROXY)
@@ -348,6 +355,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverEchConfig by profileCacheStore.string(Key.SERVER_ECH_CONFIG)
     var serverRealityPublicKey by profileCacheStore.string(Key.SERVER_REALITY_PUBLIC_KEY)
     var serverRealityShortId by profileCacheStore.string(Key.SERVER_REALITY_SHORT_ID)
+    var serverRealityMldsa65Verify by profileCacheStore.string(Key.SERVER_REALITY_MLDSA65_VERIFY)
     var serverRealityFingerprint by profileCacheStore.string(Key.SERVER_REALITY_FINGERPRINT)
     var serverRealityDisableX25519Mlkem768 by profileCacheStore.boolean(Key.SERVER_REALITY_DISABLE_X25519MLKEM768)
     var serverGrpcServiceNameCompat by profileCacheStore.boolean(Key.SERVER_GRPC_SERVICE_NAME_COMPAT)
@@ -391,10 +399,41 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverMieruTrafficPattern by profileCacheStore.string(Key.SERVER_MIERU_TRAFFIC_PATTERN)
     var serverWireGuardReserved by profileCacheStore.string(Key.SERVER_WIREGUARD_RESERVED)
     var serverWireGuardKeepaliveInterval by profileCacheStore.stringToInt(Key.SERVER_WIREGUARD_KEEPALIVE_INTERVAL)
+    var serverAmneziaWgJc by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_JC)
+    var serverAmneziaWgJmin by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_JMIN)
+    var serverAmneziaWgJmax by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_JMAX)
+    var serverAmneziaWgS1 by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_S1)
+    var serverAmneziaWgS2 by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_S2)
+    var serverAmneziaWgS3 by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_S3)
+    var serverAmneziaWgS4 by profileCacheStore.stringToInt(Key.SERVER_AMNEZIAWG_S4)
+    var serverAmneziaWgH1 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_H1)
+    var serverAmneziaWgH2 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_H2)
+    var serverAmneziaWgH3 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_H3)
+    var serverAmneziaWgH4 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_H4)
+    var serverAmneziaWgI1 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_I1)
+    var serverAmneziaWgI2 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_I2)
+    var serverAmneziaWgI3 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_I3)
+    var serverAmneziaWgI4 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_I4)
+    var serverAmneziaWgI5 by profileCacheStore.string(Key.SERVER_AMNEZIAWG_I5)
     var serverAnyTLSIdleSessionCheckInterval by profileCacheStore.stringToInt(Key.SERVER_ANYTLS_IDLE_SESSION_CHECK_INTERVAL) { 30 }
     var serverAnyTLSIdleSessionTimeout by profileCacheStore.stringToInt(Key.SERVER_ANYTLS_IDLE_SESSION_TIMEOUT) { 30 }
     var serverAnyTLSMinIdleSession by profileCacheStore.stringToInt(Key.SERVER_ANYTLS_MIN_IDLE_SESSION)
     var serverTrustTunnelServerNameToVerify by profileCacheStore.string(Key.SERVER_TRUSTTUNNEL_SERVER_NAME_TO_VERIFY)
+
+    var serverVkTurnMode by profileCacheStore.stringToInt(Key.SERVER_VKTURN_MODE)
+    var serverVkTurnProvider by profileCacheStore.stringToInt(Key.SERVER_VKTURN_PROVIDER)
+    var serverVkTurnCallLink by profileCacheStore.string(Key.SERVER_VKTURN_CALL_LINK)
+    var serverVkTurnTurnHost by profileCacheStore.string(Key.SERVER_VKTURN_TURN_HOST)
+    var serverVkTurnTurnPort by profileCacheStore.stringToInt(Key.SERVER_VKTURN_TURN_PORT) { 443 }
+    var serverVkTurnStreams by profileCacheStore.stringToInt(Key.SERVER_VKTURN_STREAMS) { 1 }
+    var serverVkTurnUdp by profileCacheStore.boolean(Key.SERVER_VKTURN_UDP) { true }
+    var serverVkTurnDebug by profileCacheStore.boolean(Key.SERVER_VKTURN_DEBUG)
+    var serverVkTurnManualCaptcha by profileCacheStore.boolean(Key.SERVER_VKTURN_MANUAL_CAPTCHA)
+    var serverVkTurnDns by profileCacheStore.string(Key.SERVER_VKTURN_DNS)
+    var serverVkTurnAllocsPerStream by profileCacheStore.stringToInt(Key.SERVER_VKTURN_ALLOCS_PER_STREAM)
+    var serverVkTurnNoDtls by profileCacheStore.boolean(Key.SERVER_VKTURN_NO_DTLS)
+    var serverVkTurnSessionId by profileCacheStore.string(Key.SERVER_VKTURN_SESSION_ID)
+    var serverVkTurnV1 by profileCacheStore.boolean(Key.SERVER_VKTURN_V1)
 
     var serverNaiveNoPostQuantum by profileCacheStore.boolean(Key.SERVER_NAIVE_NO_POST_QUANTUM)
     var serverShadowQUICDisableALPN by profileCacheStore.boolean(Key.SERVER_SHADOWQUIC_DISABLE_ALPN)
@@ -416,6 +455,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var balancerProbeInterval by profileCacheStore.stringToInt(Key.PROBE_INTERVAL) { 300 }
     var balancerNameFilter by profileCacheStore.string(Key.BALANCER_NAME_FILTER)
     var balancerNameFilter1 by profileCacheStore.string(Key.BALANCER_NAME_FILTER1)
+    var balancerUseLandingProxy by profileCacheStore.boolean(Key.BALANCER_USE_LANDING_PROXY)
+    var balancerUseFrontProxy by profileCacheStore.boolean(Key.BALANCER_USE_FRONT_PROXY)
 
 
     var routeName by profileCacheStore.string(Key.ROUTE_NAME)
@@ -432,6 +473,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var routeReverse by profileCacheStore.boolean(Key.ROUTE_REVERSE)
     var routeRedirect by profileCacheStore.string(Key.ROUTE_REDIRECT)
     var routePackages by profileCacheStore.string(Key.ROUTE_PACKAGES)
+    var routeCustomPackageNameOrUid by profileCacheStore.string(Key.ROUTE_CUSTOM_PACKAGE_NAME_OR_UID)
     var routeNetworkType by profileCacheStore.stringSet(Key.ROUTE_NETWORK_TYPE)
     var routeSSID by profileCacheStore.string(Key.ROUTE_SSID)
 

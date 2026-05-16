@@ -33,8 +33,31 @@ import io.nekohasekai.sagernet.fmt.v2ray.VLESSBean
 import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
 import io.nekohasekai.sagernet.fmt.v2ray.supportedQuicSecurity
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
+import io.nekohasekai.sagernet.fmt.wireguard.putAmneziaOption
 import io.nekohasekai.sagernet.ktx.*
 import kotlin.io.encoding.Base64
+
+private val V2RAY5_AMNEZIA_WG_OPTION_KEYS = listOf("jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4", "i1", "i2", "i3", "i4", "i5")
+
+private fun WireGuardBean.applyV2Ray5AmneziaOptions(settings: JsonObject) {
+    fun applyFrom(options: JsonObject?) {
+        options ?: return
+        V2RAY5_AMNEZIA_WG_OPTION_KEYS.forEach { key ->
+            val titleKey = key.replaceFirstChar { it.uppercase() }
+            putAmneziaOption(
+                key,
+                options.getString(key)
+                    ?: options.getString(titleKey)
+                    ?: options.getString(key.uppercase())
+                    ?: options.getInt(key)?.toString()
+                    ?: options.getInt(titleKey)?.toString()
+                    ?: options.getInt(key.uppercase())?.toString()
+            )
+        }
+    }
+    applyFrom(settings)
+    applyFrom(settings.getObject("amnezia") ?: settings.getObject("amneziaWG") ?: settings.getObject("amnezia_wg"))
+}
 
 fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
     when (val type = outbound.getString("protocol")) {
@@ -126,12 +149,15 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                                         v2rayBean.allowInsecure = allowInsecure
                                     }
                                 }
-                                tlsConfig.getString("echDohServer")?.also {
-                                    v2rayBean.echEnabled = true
-                                }
-                                tlsConfig.getString("echConfig")?.also {
-                                    v2rayBean.echEnabled = true
-                                    v2rayBean.echConfig = it
+                                if (v2rayBean is VLESSBean) {
+                                    // Only parse ECH for shit VLESS free nodes
+                                    tlsConfig.getString("echDohServer")?.also {
+                                        v2rayBean.echEnabled = true
+                                    }
+                                    tlsConfig.getString("echConfig")?.also {
+                                        v2rayBean.echEnabled = true
+                                        v2rayBean.echConfig = it
+                                    }
                                 }
                             }
                         }
@@ -440,8 +466,10 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                     wireguardBean.mtu = stack.getInt("mtu")
 
                 }
+                wireguardBean.applyV2Ray5AmneziaOptions(settings)
                 (settings.getObject("wg_device") ?: outbound.getObject("wgDevice"))?.also { wgDevice ->
                     wireguardBean.privateKey = (wgDevice.getString("private_key") ?: wgDevice.getString("privateKey")) ?: return listOf()
+                    wireguardBean.applyV2Ray5AmneziaOptions(wgDevice)
                     wgDevice.getArray("peers")?.forEach { peer ->
                         beanList.add(wireguardBean.applyDefaultValues().clone().apply {
                             peerPublicKey = peer.getString("public_key") ?: peer.getString("publicKey")

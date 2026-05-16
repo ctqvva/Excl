@@ -31,26 +31,44 @@ import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 
-fun ShadowQUICBean.buildShadowQUICConfig(port: Int, cacheFile: (() -> File)? = null, forExport: Boolean = false): String {
+fun ShadowQUICBean.buildShadowQUICConfig(port: Int, username: String = "", password: String = "", cacheFile: (() -> File)? = null, forExport: Boolean = false): String {
     val confObject: MutableMap<String, Any> = HashMap()
 
     val inboundObject: MutableMap<String, Any> = HashMap()
     inboundObject["type"] = "socks"
     inboundObject["bind-addr"] = joinHostPort(LOCALHOST, port)
+    if (username.isNotEmpty() && password.isNotEmpty()) {
+        val userObject: MutableMap<String, Any> = HashMap()
+        userObject["username"] = username
+        userObject["password"] = password
+        inboundObject["users"] = listOf(userObject)
+    }
     confObject["inbound"] = inboundObject
 
     val outboundObject: MutableMap<String, Any> = HashMap()
     outboundObject["type"] = if (useSunnyQUIC) "sunnyquic" else "shadowquic"
     outboundObject["addr"] = joinHostPort(finalAddress, finalPort)
-    if (password.isNotEmpty()) outboundObject["password"] = password
-    if (username.isNotEmpty()) outboundObject["username"] = username
+    if (this.username.isNotEmpty()) outboundObject["username"] = this.username
+    if (this.password.isNotEmpty()) outboundObject["password"] = this.password
     if (sni.isNotEmpty()) outboundObject["server-name"] = sni
     if (disableALPN) {
         outboundObject["alpn"] = listOf<String>()
     } else if (alpn.isNotEmpty()) {
         outboundObject["alpn"] = alpn.listByLineOrComma()
     }
-    if (congestionControl.isNotEmpty()) outboundObject["congestion-control"] = congestionControl
+    when (congestionControl) {
+        "" -> {}
+        "brutal" -> {
+            val brutalObject: MutableMap<String, Any> = HashMap()
+            brutalObject["bandwidth"] = "${brutalUploadBandwidth}m"
+            val congestionControlObject: MutableMap<String, Any> = HashMap()
+            congestionControlObject["brutal"] = brutalObject
+            outboundObject["congestion-control"] = congestionControlObject
+        }
+        else -> {
+            outboundObject["congestion-control"] = congestionControl
+        }
+    }
     if (zeroRTT) outboundObject["zero-rtt"] = zeroRTT
     if (udpOverStream) outboundObject["over-stream"] = udpOverStream
     if (useSunnyQUIC && certificate.isNotEmpty() && cacheFile != null) {

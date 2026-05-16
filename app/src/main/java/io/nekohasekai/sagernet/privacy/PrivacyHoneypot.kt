@@ -162,7 +162,7 @@ object PrivacyHoneypot {
                     (
                         "HTTP/1.1 407 Proxy Authentication Required\r\n" +
                             "Connection: close\r\n" +
-                            "Proxy-Authenticate: Basic realm=\"Exclave Honeypot\"\r\n\r\n"
+                            "Proxy-Authenticate: Basic realm=\"Excl Honeypot\"\r\n\r\n"
                         ).toByteArray()
                 )
             }

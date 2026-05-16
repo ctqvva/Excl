@@ -291,7 +291,10 @@ class VpnService : BaseVpnService(),
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             DataStore.appendHttpProxy &&
             DataStore.requireHttp &&
-            !DataStore.privacyBlockHttpProxyInVpnMode
+            !DataStore.privacyBlockHttpProxyInVpnMode &&
+            !DataStore.privacyRequireHttpInboundAuth &&
+            DataStore.httpUsername.isEmpty() &&
+            DataStore.httpPassword.isEmpty()
         ) {
             if (DataStore.httpProxyException.isNotEmpty()) {
                 builder.setHttpProxy(ProxyInfo.buildDirectProxy(LOCALHOST, DataStore.httpPort,
@@ -327,7 +330,8 @@ class VpnService : BaseVpnService(),
             implementation = tunImplementation
             sniffing = DataStore.trafficSniffing
             overrideDestination = DataStore.destinationOverride
-            fakeDNS = DataStore.enableFakeDns
+            // fakeDNS = DataStore.enableFakeDns
+            fakeDNS = data.proxy!!.config.useFakeDNS
             dumpUID = data.proxy!!.config.dumpUID
             trafficStats = DataStore.appTrafficStatistics
             pCap = DataStore.enablePcap

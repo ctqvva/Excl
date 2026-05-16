@@ -28,18 +28,17 @@ import android.webkit.WebViewClient
 import io.nekohasekai.sagernet.RootCAProvider
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.bg.AbstractInstance
-import io.nekohasekai.sagernet.bg.ExternalInstance
 import io.nekohasekai.sagernet.bg.GuardedProcessPool
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.fmt.LOCALHOST
 import io.nekohasekai.sagernet.fmt.V2rayBuildResult
 import io.nekohasekai.sagernet.fmt.buildV2RayConfig
-import io.nekohasekai.sagernet.fmt.internal.ConfigBean
 import io.nekohasekai.sagernet.fmt.naive.NaiveBean
 import io.nekohasekai.sagernet.fmt.naive.buildNaiveConfig
 import io.nekohasekai.sagernet.fmt.shadowquic.ShadowQUICBean
 import io.nekohasekai.sagernet.fmt.shadowquic.buildShadowQUICConfig
+import io.nekohasekai.sagernet.fmt.vkturn.VkTurnBean
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.plugin.PluginManager
 import kotlinx.coroutines.*
@@ -57,7 +56,6 @@ abstract class V2RayInstance(
 
     val pluginPath = hashMapOf<String, PluginManager.InitResult>()
     val pluginConfigs = hashMapOf<Int, Pair<Int, String>>()
-    val externalInstances = hashMapOf<Int, AbstractInstance>()
     open lateinit var processes: GuardedProcessPool
     private var cacheFiles = ArrayList<File>()
     fun isInitialized(): Boolean {
@@ -80,16 +78,19 @@ abstract class V2RayInstance(
         v2rayPoint = V2RayInstance()
         buildConfig()
         for ((_, chain) in config.index) {
-            chain.entries.forEachIndexed { _, (port, profile) ->
+            chain.entries.forEachIndexed { _, (triple, profile) ->
+                val port = triple.first
+                val username = triple.second
+                val password = triple.third
                 when (val bean = profile.requireBean()) {
                     is NaiveBean -> {
                         initPlugin("naive-plugin")
-                        pluginConfigs[port] = profile.type to bean.buildNaiveConfig(port)
+                        pluginConfigs[port] = profile.type to bean.buildNaiveConfig(port, username, password)
                     }
                     is ShadowQUICBean -> {
                         initPlugin("shadowquic-plugin")
                         pluginConfigs[port] = profile.type to bean.buildShadowQUICConfig(
-                            port,
+                            port, username, password,
                             {
                                 File(app.noBackupFilesDir, "shadowquic_" + SystemClock.elapsedRealtime() + ".pem").apply {
                                     parentFile?.mkdirs()
@@ -98,18 +99,8 @@ abstract class V2RayInstance(
                             }
                         )
                     }
-                    is ConfigBean -> {
-                        when (bean.type) {
-                            "v2ray_outbound" -> {
-                            }
-                            else -> {
-                                externalInstances[port] = ExternalInstance(
-                                    profile, port
-                                ).apply {
-                                    init()
-                                }
-                            }
-                        }
+                    is VkTurnBean -> {
+                        initPlugin("vkturn-plugin")
                     }
                 }
             }
@@ -121,7 +112,8 @@ abstract class V2RayInstance(
     override fun launch() {
         val context = SagerNet.application
         for ((_, chain) in config.index) {
-            chain.entries.forEachIndexed { _, (port, profile) ->
+            chain.entries.forEachIndexed { _, (triple, profile) ->
+                val port = triple.first
                 val bean = profile.requireBean()
                 val (_, config) = pluginConfigs[port] ?: (0 to "")
                 val env = mutableMapOf<String, String>()
@@ -140,9 +132,6 @@ abstract class V2RayInstance(
                     }
                 }
                 when {
-                    externalInstances.containsKey(port) -> {
-                        externalInstances[port]!!.launch()
-                    }
                     bean is NaiveBean -> {
                         val configFile = File(
                             context.noBackupFilesDir,
@@ -183,6 +172,65 @@ abstract class V2RayInstance(
                             "-c",
                             configFile.absolutePath,
                         )
+                        processes.start(commands, env)
+                    }
+                    bean is VkTurnBean -> {
+                        val commands = mutableListOf(
+                            initPlugin("vkturn-plugin").path,
+                            "-listen",
+                            joinHostPort(LOCALHOST, port),
+                            "-peer",
+                            joinHostPort(bean.serverAddress.ifEmpty { error("empty VK TURN peer address") }, bean.serverPort),
+                            "-turn",
+                            bean.turnHost.ifEmpty { error("empty VK TURN host") },
+                            "-port",
+                            bean.turnPort.toString(),
+                            "-n",
+                            bean.streams.toString(),
+                        )
+                        when (bean.provider) {
+                            VkTurnBean.PROVIDER_YANDEX -> {
+                                commands.add("-yandex-link")
+                                commands.add(bean.callLink.ifEmpty { error("Yandex Telemost link is required") })
+                            }
+                            VkTurnBean.PROVIDER_WB -> {
+                                commands.add("-wb")
+                            }
+                            else -> {
+                                commands.add("-vk-link")
+                                commands.add(bean.callLink.ifEmpty { error("VK call link is required") })
+                            }
+                        }
+                        if (bean.mode == VkTurnBean.MODE_VLESS) {
+                            commands.add("-vless")
+                        }
+                        if (bean.udp) {
+                            commands.add("-udp")
+                        }
+                        if (bean.debug) {
+                            commands.add("-debug")
+                        }
+                        if (bean.manualCaptcha) {
+                            commands.add("-manual-captcha")
+                        }
+                        if (bean.dns.isNotEmpty()) {
+                            commands.add("-dns")
+                            commands.add(bean.dns)
+                        }
+                        if (bean.allocsPerStream > 0) {
+                            commands.add("-allocs-per-stream")
+                            commands.add(bean.allocsPerStream.toString())
+                        }
+                        if (bean.noDtls) {
+                            commands.add("-no-dtls")
+                        }
+                        if (bean.sessionId.isNotEmpty()) {
+                            commands.add("-session-id")
+                            commands.add(bean.sessionId)
+                        }
+                        if (bean.protocolV1) {
+                            commands.add("-v1")
+                        }
                         processes.start(commands, env)
                     }
                 }
@@ -248,12 +296,6 @@ abstract class V2RayInstance(
     @Suppress("EXPERIMENTAL_API_USAGE")
     override fun close() {
         if (isClosed) return
-
-        for (instance in externalInstances.values) {
-            runCatching {
-                instance.close()
-            }
-        }
 
         cacheFiles.removeAll { it.delete(); true }
 

@@ -34,6 +34,10 @@ data class TrafficStats(
     // Outbound "bypass" usage is not counted
     var txTotal: Long = 0L,
     var rxTotal: Long = 0L,
+
+    // Active balancer member for the current profile, bridged from the :bg process.
+    var activeBalancerMemberId: Long = 0L,
+    var activeBalancerMemberName: String = "",
 ) : Parcelable {
     operator fun plus(other: TrafficStats) = TrafficStats(
         txRateProxy + other.txRateProxy, rxRateProxy + other.rxRateProxy,

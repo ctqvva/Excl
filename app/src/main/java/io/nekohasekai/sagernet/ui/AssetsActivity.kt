@@ -329,8 +329,8 @@ class AssetsActivity : ThemedActivity() {
 
         val client = Libsagernetcore.newHttpClient().apply {
             keepAlive()
-            if (SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5()) {
-                useSocks5(DataStore.socksPort)
+            if (SagerNet.started && DataStore.startedProfile > 0) {
+                useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
             }
         }
 
@@ -390,8 +390,8 @@ class AssetsActivity : ThemedActivity() {
     suspend fun updateCustomAsset(file: File, url: String) {
         val client = Libsagernetcore.newHttpClient().apply {
             keepAlive()
-            if (SagerNet.started && DataStore.startedProfile > 0 && DataStore.canUseInternalSocks5()) {
-                useSocks5(DataStore.socksPort)
+            if (SagerNet.started && DataStore.startedProfile > 0) {
+                useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
             }
         }
         try {

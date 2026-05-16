@@ -25,6 +25,7 @@ import com.google.gson.JsonObject
 import io.nekohasekai.sagernet.fmt.trojan.TrojanBean
 import io.nekohasekai.sagernet.ktx.*
 import libsagernetcore.Libsagernetcore
+import java.util.Base64
 
 val supportedVmessMethod = arrayOf(
     "auto", "aes-128-gcm", "chacha20-poly1305", "none", "zero"
@@ -220,13 +221,16 @@ fun parseV2Ray(link: String): StandardV2RayBean {
                     bean.allowInsecure = true
                 }
             }
-            /*url.queryParameter("ech")?.let {
-                bean.echEnabled = true
-                try {
-                    Base64.getDecoder().decode(it)
-                    bean.echConfig = it
-                } catch (_: Exception) {}
-            }*/
+            if (url.scheme == "vless") {
+                // Only parse ECH for shit VLESS free nodes
+                url.queryParameter("ech")?.let {
+                    bean.echEnabled = true
+                    try {
+                        Base64.getDecoder().decode(it)
+                        bean.echConfig = it
+                    } catch (_: Exception) {}
+                }
+            }
         }
         "reality" -> {
             url.queryParameterNotBlank("sni")?.let {
@@ -237,6 +241,9 @@ fun parseV2Ray(link: String): StandardV2RayBean {
             }
             url.queryParameterNotBlank("sid")?.let {
                 bean.realityShortId = it
+            }
+            url.queryParameterNotBlank("pqv")?.let {
+                bean.realityMldsa65Verify = it
             }
             if (bean is VLESSBean) {
                 url.queryParameterNotBlank("flow")?.let {
@@ -870,6 +877,9 @@ fun StandardV2RayBean.toUri(): String? {
             builder.addQueryParameter("pbk", realityPublicKey.ifEmpty { error("empty reality public key") })
             if (realityShortId.isNotEmpty()) {
                 builder.addQueryParameter("sid", realityShortId)
+            }
+            if (realityMldsa65Verify.isNotEmpty()) {
+                builder.addQueryParameter("pqv", realityMldsa65Verify)
             }
             builder.addQueryParameter("fp", "chrome") // "若使用 REALITY，此项不可省略。"
             if (this is VLESSBean && flow.isNotEmpty()) {

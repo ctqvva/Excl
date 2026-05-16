@@ -175,6 +175,7 @@ object PluginManager {
         return when (pluginId) {
             "naive-plugin" -> "libnaive.so"
             "shadowquic-plugin" -> "libshadowquic.so"
+            "vkturn-plugin" -> "libvkturn.so"
             else -> return null
         }.let {
             File(SagerNet.application.applicationInfo.nativeLibraryDir, it).apply {
