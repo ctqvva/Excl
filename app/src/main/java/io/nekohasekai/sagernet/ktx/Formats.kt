@@ -120,9 +120,7 @@ fun parseShareLinks(text: String): List<AbstractBean> {
                 entities.add(parseWireGuard(this))
             }
         } else if (startsWith("vpn://", ignoreCase = true)) {
-            runCatching {
-                entities.addAll(parseAmneziaVpn(this))
-            }
+            entities.addAll(parseAmneziaVpn(this))
         } else if (startsWith("mierus://", ignoreCase = true)) {
             runCatching {
                 entities.addAll(parseMieru(this))

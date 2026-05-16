@@ -1546,10 +1546,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 } else {
                     null
                 }
-                val balancerHint = if (
-                    proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
-                    SagerNet.started
-                ) {
+                val balancerHint = if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
                     BalancerDisplayResolver.buildHint(proxyEntity)
                 } else {
                     null
@@ -1591,10 +1588,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         balancerSnapshot.activeProfileName,
                     )
                     profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
-                } else if (
-                    proxyEntity.type == ProxyEntity.TYPE_BALANCER &&
-                    SagerNet.started
-                ) {
+                } else if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
                     if (balancerHint != null && balancerHint.totalMembers > 0) {
                         profileStatus.text = getString(
                             R.string.balancer_alive_members_short,
