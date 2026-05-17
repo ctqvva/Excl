@@ -24,6 +24,7 @@ import io.nekohasekai.sagernet.LogLevel
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
+import io.nekohasekai.sagernet.database.BalancerDisplayResolver
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
@@ -67,6 +68,15 @@ class ProxyInstance(profile: ProxyEntity, val service: BaseService.Interface) : 
         }
 
         SagerNet.started = true
+        if (profile.balancerBean != null) {
+            BalancerDisplayResolver.buildHint(profile)?.let { hint ->
+                val memberId = hint.preferredMemberId
+                val memberName = hint.preferredMemberName
+                if (memberId != null && memberName != null) {
+                    BalancerRuntimeState.update(profile.id, memberId, memberName)
+                }
+            }
+        }
     }
 
     fun sendInitStatuses() {

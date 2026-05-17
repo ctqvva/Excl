@@ -5,6 +5,7 @@ import io.nekohasekai.sagernet.fmt.internal.BalancerBean
 object BalancerDisplayResolver {
 
     data class Hint(
+        val preferredMemberId: Long?,
         val preferredMemberName: String?,
         val aliveMembers: Int,
         val totalMembers: Int,
@@ -30,7 +31,7 @@ object BalancerDisplayResolver {
             else -> SagerDatabase.proxyDao.getEntities(bean.proxies)
         }.filter { it.id != balancer.id }
 
-        if (members.isEmpty()) return Hint(null, 0, 0)
+        if (members.isEmpty()) return Hint(null, null, 0, 0)
 
         val aliveMembers = members.filter { it.status == 1 }
         val preferred = when {
@@ -41,10 +42,11 @@ object BalancerDisplayResolver {
                     member.ping.takeIf { it > 0 } ?: Int.MAX_VALUE
                 }
             }
-            else -> null
+            else -> aliveMembers.first()
         }
 
         return Hint(
+            preferred?.id,
             preferred?.displayName(),
             aliveMembers.size,
             members.size,

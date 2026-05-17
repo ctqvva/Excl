@@ -237,6 +237,12 @@ object RawUpdater : GroupUpdater() {
 
     @Suppress("UNCHECKED_CAST")
     fun parseRaw(text: String): List<AbstractBean>? {
+        val trimmed = text.trim()
+        if (trimmed.startsWith("vpn://", ignoreCase = true)) {
+            return parseShareLinks(trimmed).takeIf { it.isNotEmpty() }
+                ?: error(app.getString(R.string.no_proxies_found))
+        }
+
         try {
             val options = DumperOptions()
             val yaml = Yaml(YAMLConstructor(LoaderOptions()), Representer(options), options, object : Resolver() {

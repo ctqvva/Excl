@@ -1553,15 +1553,22 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
                 if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
+                    val currentMemberName = balancerSnapshot?.activeProfileName
+                        ?: balancerHint?.preferredMemberName
                     address = buildList {
                         add(
                             getString(
                                 R.string.balancer_current_member_value,
-                                balancerSnapshot?.activeProfileName
+                                currentMemberName
                                     ?: getString(R.string.balancer_current_member_pending)
                             )
                         )
-                        balancerHint?.preferredMemberName?.let {
+                        if (
+                            balancerSnapshot != null &&
+                            balancerHint?.preferredMemberName != null &&
+                            balancerHint.preferredMemberName != balancerSnapshot.activeProfileName
+                        ) {
+                            val it = balancerHint.preferredMemberName
                             add(getString(R.string.balancer_preferred_member_value, it))
                         }
                         if (balancerHint != null && balancerHint.totalMembers > 0) {
@@ -1588,6 +1595,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                         balancerSnapshot.activeProfileName,
                     )
                     profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
+                } else if (proxyEntity.type == ProxyEntity.TYPE_BALANCER && balancerHint?.preferredMemberName != null) {
+                    profileStatus.text = getString(
+                        R.string.balancer_connected_via,
+                        balancerHint.preferredMemberName,
+                    )
+                    profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
                 } else if (proxyEntity.type == ProxyEntity.TYPE_BALANCER) {
                     if (balancerHint != null && balancerHint.totalMembers > 0) {
                         profileStatus.text = getString(

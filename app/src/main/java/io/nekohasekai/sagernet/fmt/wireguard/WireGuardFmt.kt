@@ -422,7 +422,9 @@ private fun parseAmneziaWireGuardObject(
         "address",
         "addresses",
         "ip",
-    )?.let { bean.localAddress = it.replace(", ", "\n").replace(",", "\n") }
+    )?.let {
+        if (bean.localAddress.isBlank()) bean.localAddress = it.replace(", ", "\n").replace(",", "\n")
+    }
     readString(
         "client_priv_key",
         "clientPrivKey",
