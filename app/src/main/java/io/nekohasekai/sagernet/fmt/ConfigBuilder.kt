@@ -40,6 +40,7 @@ import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.V2rayBuildResult.IndexEntity
 import io.nekohasekai.sagernet.fmt.anytls.AnyTLSBean
+import io.nekohasekai.sagernet.fmt.byebyedpi.ByeByeDPIBean
 import io.nekohasekai.sagernet.fmt.gson.gson
 import io.nekohasekai.sagernet.fmt.http.HttpBean
 import io.nekohasekai.sagernet.fmt.http3.Http3Bean
@@ -761,6 +762,21 @@ fun buildV2RayConfig(
                                     currentDomainStrategy = "UseIP"
                                 }
                             }
+                        }
+                    } else if (bean is ByeByeDPIBean) {
+                        // Local byedpi desync proxy (libbyedpi.so via JNI, started
+                        // in V2RayInstance). Always loopback + ephemeral port.
+                        val localPort = mkPort()
+                        chainMap[Triple(localPort, "", "")] = proxyEntity
+                        currentOutbound.apply {
+                            protocol = "socks"
+                            settings = LazyOutboundConfigurationObject(this,
+                                SocksOutboundConfigurationObject().apply {
+                                    servers = listOf(SocksOutboundConfigurationObject.ServerObject().apply {
+                                        address = LOCALHOST
+                                        port = localPort
+                                    })
+                                })
                         }
                     } else if (proxyEntity.needExternal()) {
                         val localPort = mkPort()

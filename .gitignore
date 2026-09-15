@@ -5,6 +5,7 @@
 .kotlin
 .DS_Store
 build/
+.cxx/
 local.properties
 /app/libs/
 /app/src/main/assets/exclave-core/*.dat

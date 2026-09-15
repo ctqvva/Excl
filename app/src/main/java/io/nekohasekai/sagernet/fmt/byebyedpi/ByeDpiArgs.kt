@@ -184,8 +184,9 @@ private fun buildUiArgs(bean: ByeByeDPIBean, listenPort: Int): Array<String> {
         if (bean.fakeOffset != 0) args.add("-O${bean.fakeOffset}")
     }
 
-    if (bean.desyncMethod == ByeByeDPIBean.DESYNC_OOB ||
-        bean.desyncMethod == ByeByeDPIBean.DESYNC_DISOOB
+    if ((bean.desyncMethod == ByeByeDPIBean.DESYNC_OOB ||
+                bean.desyncMethod == ByeByeDPIBean.DESYNC_DISOOB) &&
+        bean.oobChar.isNotEmpty()
     ) {
         args.add("-e${bean.oobChar[0].code.toByte()}")
     }

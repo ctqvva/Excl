@@ -514,6 +514,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_new_vk_turn -> {
                 startActivity(Intent(requireActivity(), VkTurnSettingsActivity::class.java))
             }
+            R.id.action_new_byebyedpi -> {
+                startActivity(Intent(requireActivity(), ByeByeDPISettingsActivity::class.java))
+            }
             R.id.action_new_juicity -> {
                 startActivity(Intent(requireActivity(), JuicitySettingsActivity::class.java))
             }

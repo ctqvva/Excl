@@ -34,6 +34,9 @@ import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.fmt.LOCALHOST
 import io.nekohasekai.sagernet.fmt.V2rayBuildResult
 import io.nekohasekai.sagernet.fmt.buildV2RayConfig
+import io.nekohasekai.sagernet.fmt.byebyedpi.ByeByeDPIBean
+import io.nekohasekai.sagernet.fmt.byebyedpi.buildByeDpiArgs
+import io.nekohasekai.sagernet.core.ByeDpiProxy
 import io.nekohasekai.sagernet.fmt.naive.NaiveBean
 import io.nekohasekai.sagernet.fmt.naive.buildNaiveConfig
 import io.nekohasekai.sagernet.fmt.vkturn.VkTurnBean
@@ -56,6 +59,8 @@ abstract class V2RayInstance(
     val pluginConfigs = hashMapOf<Int, Pair<Int, String>>()
     open lateinit var processes: GuardedProcessPool
     private var cacheFiles = ArrayList<File>()
+    private var byeDpiProxy: ByeDpiProxy? = null
+    private var byeDpiJob: Job? = null
     fun isInitialized(): Boolean {
         return ::config.isInitialized
     }
@@ -87,6 +92,16 @@ abstract class V2RayInstance(
                     }
                     is VkTurnBean -> {
                         initPlugin("vkturn-plugin")
+                    }
+                    is ByeByeDPIBean -> {
+                        // In-process byedpi proxy (libbyedpi.so); the chain port
+                        // was allocated in ConfigBuilder for this profile.
+                        val proxy = ByeDpiProxy()
+                        byeDpiProxy = proxy
+                        val args = buildByeDpiArgs(bean, port)
+                        byeDpiJob = GlobalScope.launch(Dispatchers.IO) {
+                            proxy.startProxy(args)
+                        }
                     }
                 }
             }
@@ -263,6 +278,26 @@ abstract class V2RayInstance(
     @Suppress("EXPERIMENTAL_API_USAGE")
     override fun close() {
         if (isClosed) return
+
+        byeDpiJob?.let { job ->
+            try {
+                byeDpiProxy?.stopProxy()
+            } catch (_: Exception) {
+            }
+            job.cancel()
+            runBlocking {
+                try {
+                    withTimeout(2000) { job.join() }
+                } catch (_: Exception) {
+                    try {
+                        byeDpiProxy?.forceClose()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            byeDpiJob = null
+            byeDpiProxy = null
+        }
 
         cacheFiles.removeAll { it.delete(); true }
 

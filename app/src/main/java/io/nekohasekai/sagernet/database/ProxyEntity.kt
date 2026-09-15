@@ -30,6 +30,8 @@ import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.KryoConverters
 import io.nekohasekai.sagernet.fmt.Serializable
 import io.nekohasekai.sagernet.fmt.anytls.AnyTLSBean
+import io.nekohasekai.sagernet.fmt.byebyedpi.ByeByeDPIBean
+import io.nekohasekai.sagernet.fmt.byebyedpi.toUri
 import io.nekohasekai.sagernet.fmt.anytls.toUri
 import io.nekohasekai.sagernet.fmt.buildV2RayConfig
 import io.nekohasekai.sagernet.fmt.http.HttpBean
@@ -62,6 +64,7 @@ import io.nekohasekai.sagernet.fmt.trojan.toUri
 import io.nekohasekai.sagernet.fmt.trusttunnel.TrustTunnelBean
 import io.nekohasekai.sagernet.fmt.snell.SnellBean
 import io.nekohasekai.sagernet.ui.profile.SnellSettingsActivity
+import io.nekohasekai.sagernet.ui.profile.ByeByeDPISettingsActivity
 import io.nekohasekai.sagernet.fmt.trusttunnel.toUri
 import io.nekohasekai.sagernet.fmt.tuic5.Tuic5Bean
 import io.nekohasekai.sagernet.fmt.tuic5.toUri
@@ -109,6 +112,7 @@ data class ProxyEntity(
     var trustTunnelBean: TrustTunnelBean? = null,
     var vkTurnBean: VkTurnBean? = null,
     var snellBean: SnellBean? = null,
+    var byeByeDPIBean: ByeByeDPIBean? = null,
     var configBean: ConfigBean? = null,
     var chainBean: ChainBean? = null,
     var balancerBean: BalancerBean? = null
@@ -137,6 +141,7 @@ data class ProxyEntity(
         // NOTE: upstream uses 30 for Snell; Excl shipped VkTurn as 30 first,
         // so Snell takes the next free id to keep existing profiles readable.
         const val TYPE_SNELL = 31
+        const val TYPE_BYEBYEDPI = 32
         const val TYPE_CHAIN = 8
         const val TYPE_BALANCER = 14
         const val TYPE_CONFIG = 13
@@ -231,6 +236,7 @@ data class ProxyEntity(
             TYPE_TRUSTTUNNEL -> trustTunnelBean = KryoConverters.trusttunnelDeserialize(byteArray)
             TYPE_VKTURN -> vkTurnBean = KryoConverters.vkturnDeserialize(byteArray)
             TYPE_SNELL -> snellBean = KryoConverters.snellDeserialize(byteArray)
+            TYPE_BYEBYEDPI -> byeByeDPIBean = KryoConverters.byebyedpiDeserialize(byteArray)
 
             TYPE_CONFIG -> configBean = KryoConverters.configDeserialize(byteArray)
             TYPE_CHAIN -> chainBean = KryoConverters.chainDeserialize(byteArray)
@@ -259,6 +265,7 @@ data class ProxyEntity(
         TYPE_TRUSTTUNNEL -> "TrustTunnel"
         TYPE_VKTURN -> "VK TURN"
         TYPE_SNELL -> snellBean!!.protocolName()
+        TYPE_BYEBYEDPI -> "ByeByeDPI"
 
         TYPE_CHAIN -> chainName
         TYPE_CONFIG -> configName
@@ -291,6 +298,7 @@ data class ProxyEntity(
             TYPE_TRUSTTUNNEL -> trustTunnelBean
             TYPE_VKTURN -> vkTurnBean
             TYPE_SNELL -> snellBean
+            TYPE_BYEBYEDPI -> byeByeDPIBean
 
             TYPE_CONFIG -> configBean
             TYPE_CHAIN -> chainBean
@@ -333,6 +341,7 @@ data class ProxyEntity(
             is AnyTLSBean -> toUri()
             is TrustTunnelBean -> toUri()
             is VkTurnBean -> toUri()
+            is ByeByeDPIBean -> toUri()
             is ShadowQUICBean -> toUri()
             else -> null
         }
@@ -395,6 +404,7 @@ data class ProxyEntity(
         trustTunnelBean = null
         vkTurnBean = null
         snellBean = null
+        byeByeDPIBean = null
 
         configBean = null
         chainBean = null
@@ -481,6 +491,10 @@ data class ProxyEntity(
                 type = TYPE_SNELL
                 snellBean = bean
             }
+            is ByeByeDPIBean -> {
+                type = TYPE_BYEBYEDPI
+                byeByeDPIBean = bean
+            }
 
             is ConfigBean -> {
                 type = TYPE_CONFIG
@@ -521,6 +535,7 @@ data class ProxyEntity(
             TYPE_TRUSTTUNNEL -> TrustTunnelSettingsActivity::class.java
             TYPE_VKTURN -> VkTurnSettingsActivity::class.java
             TYPE_SNELL -> SnellSettingsActivity::class.java
+            TYPE_BYEBYEDPI -> ByeByeDPISettingsActivity::class.java
 
             TYPE_CONFIG -> ConfigSettingsActivity::class.java
             TYPE_CHAIN -> ChainSettingsActivity::class.java

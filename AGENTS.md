@@ -37,7 +37,8 @@ Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
 - Excl-local subsystems (no upstream counterpart — never "align" them away):
   `privacy/` (`PrivacyHoneypot`, `PrivacyDefaults`, `AppDisguiseManager`),
   balancer (`BalancerRuntimeState`, `BalancerDisplayResolver`),
-  `fmt/vkturn/` + `bin/plugin/vkturn.sh`, AmneziaWG in `fmt/wireguard/`.
+  `fmt/vkturn/` + `bin/plugin/vkturn.sh`, AmneziaWG in `fmt/wireguard/`,
+  `fmt/byebyedpi/` + `core/ByeDpiProxy` (`libbyedpi.so` via CMake).
 
 ## Do
 

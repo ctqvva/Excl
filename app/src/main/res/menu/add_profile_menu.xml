@@ -96,6 +96,9 @@
                                 android:id="@+id/action_new_vk_turn"
                                 android:title="@string/action_vk_turn" />
                             <item
+                                android:id="@+id/action_new_byebyedpi"
+                                android:title="@string/action_byebyedpi" />
+                            <item
                                 android:id="@+id/action_new_shadowquic"
                                 android:title="@string/action_shadowquic" />
                             <item

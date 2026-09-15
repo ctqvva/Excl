@@ -239,6 +239,7 @@
     <string name="action_wireguard" translatable="false">WireGuard</string>
     <string name="action_amneziawg" translatable="false">AmneziaWG 2.0</string>
     <string name="action_vk_turn" translatable="false">VK TURN</string>
+    <string name="action_byebyedpi" translatable="false">ByeByeDPI</string>
     <string name="action_mieru" translatable="false">mieru</string>
     <string name="action_tuic5" translatable="false">TUIC</string>
     <string name="action_http3" translatable="false">HTTP/3</string>
@@ -278,6 +279,42 @@
     <string name="vk_turn_v1_sum">Use only with old kiper292-compatible servers.</string>
     <string name="vk_turn_manual_captcha">Manual captcha mode</string>
     <string name="vk_turn_debug">Debug logging</string>
+    <string name="byebyedpi_settings">ByeByeDPI settings</string>
+    <string name="byebyedpi_cat">DPI circumvention</string>
+    <string name="byebyedpi_use_command_line">Use command line settings</string>
+    <string name="byebyedpi_use_command_line_sum">When enabled, the raw command line below is used instead of the UI editor fields.</string>
+    <string name="byebyedpi_cmd_cat">Command line</string>
+    <string name="byebyedpi_command_line">Command line arguments</string>
+    <string name="byebyedpi_ui_cat">Proxy</string>
+    <string name="byebyedpi_max_connections">Max connections</string>
+    <string name="byebyedpi_buffer_size">Buffer size</string>
+    <string name="byebyedpi_default_ttl">Default TTL</string>
+    <string name="byebyedpi_no_domain">No domain</string>
+    <string name="byebyedpi_tcp_fast_open">TCP Fast Open</string>
+    <string name="byebyedpi_desync_method">Desync method</string>
+    <string name="byebyedpi_split_position">Split position</string>
+    <string name="byebyedpi_split_at_host">Split at host</string>
+    <string name="byebyedpi_drop_sack">Drop SACK</string>
+    <string name="byebyedpi_oob_data">OOB data</string>
+    <string name="byebyedpi_hosts_mode">Hosts</string>
+    <string name="byebyedpi_hosts">Host list (one per line)</string>
+    <string name="byebyedpi_fake_cat">Fake packet</string>
+    <string name="byebyedpi_fake_ttl">TTL of fake packets</string>
+    <string name="byebyedpi_fake_sni">SNI of fake packet</string>
+    <string name="byebyedpi_fake_offset">Fake packet offset</string>
+    <string name="byebyedpi_protocols_cat">Protocols</string>
+    <string name="byebyedpi_desync_http">HTTP desync</string>
+    <string name="byebyedpi_desync_https">HTTPS desync</string>
+    <string name="byebyedpi_desync_udp">UDP desync</string>
+    <string name="byebyedpi_udp_fake_count">Number of fake UDP</string>
+    <string name="byebyedpi_http_cat">HTTP</string>
+    <string name="byebyedpi_host_mixed_case">Host mixed case</string>
+    <string name="byebyedpi_domain_mixed_case">Domain mixed case</string>
+    <string name="byebyedpi_host_remove_spaces">Remove spaces from host</string>
+    <string name="byebyedpi_tlsrec_cat">TLS record split</string>
+    <string name="byebyedpi_tlsrec_enabled">Split TLS record</string>
+    <string name="byebyedpi_tlsrec_position">TLS record split position</string>
+    <string name="byebyedpi_tlsrec_at_sni">Split TLS record at SNI</string>
     <string name="balancer_alive_members">Alive members: %1$d/%2$d</string>
     <string name="balancer_alive_members_short">%1$d/%2$d alive</string>
     <string name="balancer_runtime_status_waiting">No active member yet</string>

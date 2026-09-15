@@ -22,6 +22,7 @@ package io.nekohasekai.sagernet.ktx
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.Serializable
 import io.nekohasekai.sagernet.fmt.anytls.parseAnyTLS
+import io.nekohasekai.sagernet.fmt.byebyedpi.parseByeByeDPI
 import io.nekohasekai.sagernet.fmt.http.parseHttp
 import io.nekohasekai.sagernet.fmt.http3.parseHttp3
 import io.nekohasekai.sagernet.fmt.hysteria2.parseHysteria2
@@ -135,6 +136,10 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             || startsWith("goodturn://", ignoreCase = true)) {
             runCatching {
                 entities.add(parseVkTurn(this))
+            }
+        } else if (startsWith("byebyedpi://", ignoreCase = true)) {
+            runCatching {
+                entities.add(parseByeByeDPI(this))
             }
         } else if (startsWith("sq://", ignoreCase = true) || startsWith("shadowquic://", ignoreCase = true)) {
             runCatching {

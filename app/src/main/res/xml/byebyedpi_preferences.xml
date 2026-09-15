@@ -1,0 +1,189 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        app:icon="@drawable/ic_social_emoji_symbols"
+        app:key="profileName"
+        app:title="@string/profile_name"
+        app:useSimpleSummaryProvider="true" />
+
+    <PreferenceCategory app:title="@string/byebyedpi_cat">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIUseCommandLine"
+            app:summary="@string/byebyedpi_use_command_line_sum"
+            app:title="@string/byebyedpi_use_command_line" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="byeByeDPICmdCategory"
+        app:title="@string/byebyedpi_cmd_cat">
+        <EditTextPreference
+            app:defaultValue="-o1 -a1 -r-5+se"
+            app:icon="@drawable/ic_file_cloud_queue"
+            app:key="serverByeByeDPICommandLine"
+            app:title="@string/byebyedpi_command_line"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="byeByeDPIUiCategory"
+        app:title="@string/byebyedpi_ui_cat">
+        <EditTextPreference
+            app:defaultValue="512"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPIMaxConnections"
+            app:title="@string/byebyedpi_max_connections"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="16384"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPIBufferSize"
+            app:title="@string/byebyedpi_buffer_size"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="0"
+            app:icon="@drawable/ic_action_dns"
+            app:key="serverByeByeDPIDefaultTtl"
+            app:title="@string/byebyedpi_default_ttl"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPINoDomain"
+            app:title="@string/byebyedpi_no_domain" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPITcpFastOpen"
+            app:title="@string/byebyedpi_tcp_fast_open" />
+        <io.nekohasekai.sagernet.widget.SimpleMenuPreference
+            app:defaultValue="4"
+            app:entries="@array/byebyedpi_desync_method_entry"
+            app:entryValues="@array/byebyedpi_desync_method_value"
+            app:icon="@drawable/ic_baseline_nfc_24"
+            app:key="serverByeByeDPIDesyncMethod"
+            app:title="@string/byebyedpi_desync_method"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="1"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPISplitPosition"
+            app:title="@string/byebyedpi_split_position"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPISplitAtHost"
+            app:title="@string/byebyedpi_split_at_host" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIDropSack"
+            app:title="@string/byebyedpi_drop_sack" />
+        <EditTextPreference
+            app:defaultValue="a"
+            app:icon="@drawable/ic_file_cloud_queue"
+            app:key="serverByeByeDPIOobChar"
+            app:title="@string/byebyedpi_oob_data"
+            app:useSimpleSummaryProvider="true" />
+        <io.nekohasekai.sagernet.widget.SimpleMenuPreference
+            app:defaultValue="0"
+            app:entries="@array/byebyedpi_hosts_mode_entry"
+            app:entryValues="@array/byebyedpi_hosts_mode_value"
+            app:icon="@drawable/baseline_public_24"
+            app:key="serverByeByeDPIHostsMode"
+            app:title="@string/byebyedpi_hosts_mode"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:icon="@drawable/ic_baseline_domain_24"
+            app:key="serverByeByeDPIHosts"
+            app:title="@string/byebyedpi_hosts"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="byeByeDPIFakeCategory"
+        app:title="@string/byebyedpi_fake_cat">
+        <EditTextPreference
+            app:defaultValue="8"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPIFakeTtl"
+            app:title="@string/byebyedpi_fake_ttl"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="www.iana.org"
+            app:icon="@drawable/ic_baseline_domain_24"
+            app:key="serverByeByeDPIFakeSni"
+            app:title="@string/byebyedpi_fake_sni"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="0"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPIFakeOffset"
+            app:title="@string/byebyedpi_fake_offset"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/byebyedpi_protocols_cat">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIDesyncHttp"
+            app:title="@string/byebyedpi_desync_http" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIDesyncHttps"
+            app:title="@string/byebyedpi_desync_https" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIDesyncUdp"
+            app:title="@string/byebyedpi_desync_udp" />
+        <EditTextPreference
+            app:defaultValue="1"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPIUdpFakeCount"
+            app:title="@string/byebyedpi_udp_fake_count"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/byebyedpi_http_cat">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIHostMixedCase"
+            app:title="@string/byebyedpi_host_mixed_case" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIDomainMixedCase"
+            app:title="@string/byebyedpi_domain_mixed_case" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPIHostRemoveSpaces"
+            app:title="@string/byebyedpi_host_remove_spaces" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/byebyedpi_tlsrec_cat">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPITlsrecEnabled"
+            app:title="@string/byebyedpi_tlsrec_enabled" />
+        <EditTextPreference
+            app:defaultValue="0"
+            app:icon="@drawable/ic_baseline_cached"
+            app:key="serverByeByeDPITlsrecPosition"
+            app:title="@string/byebyedpi_tlsrec_position"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_settings"
+            app:key="serverByeByeDPITlsrecAtSni"
+            app:title="@string/byebyedpi_tlsrec_at_sni" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

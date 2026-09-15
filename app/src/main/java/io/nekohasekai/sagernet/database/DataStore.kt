@@ -464,6 +464,34 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverVkTurnSessionId by profileCacheStore.string(Key.SERVER_VKTURN_SESSION_ID)
     var serverVkTurnV1 by profileCacheStore.boolean(Key.SERVER_VKTURN_V1)
 
+    var serverByeByeDPIUseCommandLine by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_USE_COMMAND_LINE) { true }
+    var serverByeByeDPICommandLine by profileCacheStore.string(Key.SERVER_BYEBYEDPI_COMMAND_LINE)
+    var serverByeByeDPIMaxConnections by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_MAX_CONNECTIONS) { 512 }
+    var serverByeByeDPIBufferSize by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_BUFFER_SIZE) { 16384 }
+    var serverByeByeDPIDefaultTtl by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_DEFAULT_TTL)
+    var serverByeByeDPINoDomain by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_NO_DOMAIN)
+    var serverByeByeDPIDesyncHttp by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DESYNC_HTTP) { true }
+    var serverByeByeDPIDesyncHttps by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DESYNC_HTTPS) { true }
+    var serverByeByeDPIDesyncUdp by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DESYNC_UDP) { true }
+    var serverByeByeDPIDesyncMethod by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_DESYNC_METHOD) { 4 }
+    var serverByeByeDPISplitPosition by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_SPLIT_POSITION) { 1 }
+    var serverByeByeDPISplitAtHost by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_SPLIT_AT_HOST)
+    var serverByeByeDPIFakeTtl by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_FAKE_TTL) { 8 }
+    var serverByeByeDPIFakeSni by profileCacheStore.string(Key.SERVER_BYEBYEDPI_FAKE_SNI)
+    var serverByeByeDPIOobChar by profileCacheStore.string(Key.SERVER_BYEBYEDPI_OOB_CHAR)
+    var serverByeByeDPIHostMixedCase by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_HOST_MIXED_CASE)
+    var serverByeByeDPIDomainMixedCase by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DOMAIN_MIXED_CASE)
+    var serverByeByeDPIHostRemoveSpaces by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_HOST_REMOVE_SPACES)
+    var serverByeByeDPITlsrecEnabled by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_TLSREC_ENABLED)
+    var serverByeByeDPITlsrecPosition by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_TLSREC_POSITION)
+    var serverByeByeDPITlsrecAtSni by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_TLSREC_AT_SNI)
+    var serverByeByeDPIHostsMode by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_HOSTS_MODE)
+    var serverByeByeDPIHosts by profileCacheStore.string(Key.SERVER_BYEBYEDPI_HOSTS)
+    var serverByeByeDPITcpFastOpen by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_TCP_FAST_OPEN)
+    var serverByeByeDPIUdpFakeCount by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_UDP_FAKE_COUNT) { 1 }
+    var serverByeByeDPIDropSack by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DROP_SACK)
+    var serverByeByeDPIFakeOffset by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_FAKE_OFFSET)
+
     var serverNaiveNoPostQuantum by profileCacheStore.boolean(Key.SERVER_NAIVE_NO_POST_QUANTUM)
     var serverSingUot by profileCacheStore.boolean(Key.SERVER_SING_UOT)
     var serverSingMux by profileCacheStore.boolean(Key.SERVER_SING_MUX)

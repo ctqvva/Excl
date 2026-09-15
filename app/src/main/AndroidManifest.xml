@@ -220,6 +220,8 @@
         <activity
             android:name="io.nekohasekai.sagernet.ui.profile.VkTurnSettingsActivity" />
         <activity
+            android:name="io.nekohasekai.sagernet.ui.profile.ByeByeDPISettingsActivity" />
+        <activity
             android:name="io.nekohasekai.sagernet.ui.profile.MieruSettingsActivity" />
         <activity
             android:name="io.nekohasekai.sagernet.ui.profile.Tuic5SettingsActivity" />
