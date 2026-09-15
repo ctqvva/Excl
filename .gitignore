@@ -13,6 +13,22 @@ local.properties
 /app/libs/
 /app/src/main/assets/exclave-core/*.dat
 /service_account_credentials.json
+# Signing keys: never commit real keys.
+# NOTE: release.keystore is tracked historically (pre-existing); do not
+# add new keys. See AGENTS.md.
+*.keystore
+*.jks
+*.p12
+*.pfx
+# Build outputs: never commit binaries or regenerable release metadata.
+*.apk
+*.aab
+*.apks
+app/**/release/output-metadata.json
+app/**/release/baselineProfiles/
+# Merge/rebase leftovers.
+*.orig
+*.rej
 jniLibs/
 go.work
 go.work.sum
