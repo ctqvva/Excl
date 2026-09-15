@@ -1,17 +1,10 @@
-# CLAUDE.md — Excl
+@AGENTS.md
 
-This file exists for Claude Code / Claude agents. **The canonical agent
-instructions are `AGENTS.md` — read it first and follow it exactly**
-(progressive reading contract, thinking protocol, commit-at-every-step,
-never-commit list, submodule discipline, upstream-merge procedure).
+Claude-Code-only notes (everything shared lives in `AGENTS.md`):
 
-Claude-specific notes:
-
-- Keep responses short and factual; cite `path:line` for code claims.
-- Use `TodoWrite` for multi-step work; exactly one `in_progress` item.
+- Keep replies short and factual; cite `path:line` for code claims.
+- Use a todo list for multi-step work, one item in progress at a time.
 - Prefer parallel independent tool calls (reads, `git status` + `git log`).
-- Never commit secrets or build outputs; never `git commit -a`, amend,
-  push, or rewrite history unless explicitly asked.
-- When an upstream merge touches Excl-branded files, stop and reconcile
-  branding (README `# Excl`, `Excl` log tags, Balancer/AWG/VkTurn) before
-  committing — see “Merging upstream” in `AGENTS.md`.
+- Never `git commit -a`, amend, push, or rewrite history unless asked.
+- On upstream merges, reconcile branding (README `# Excl`, `Excl` log tags,
+  Balancer/AWG/VkTurn) before committing — see “Upstream merges”.

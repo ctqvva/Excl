@@ -2,92 +2,97 @@
 
 Excl (`origin` → `ctqvva/Excl`, branch `dev`) is a privacy-hardened Android
 proxy-client fork of Exclave (`upstream` → `dyhkwong/Exclave`). Fork identity
-lives in code/strings (app name `Excl`, `Excl` log tags, Balancer / AmneziaWG /
-VkTurn support, privacy-hardening defaults) — **never let an upstream merge
-silently rebrand it back to Exclave.**
+lives in code: app name `Excl`, `Excl` log tags, Balancer / AmneziaWG / VkTurn
+support, privacy-hardening defaults. There is no unit test suite and no
+configured linter; verification means the compile/build commands below.
 
-## Progressive reading contract
+## Commands (run from repo root)
 
-Read this file only, then pull in deeper docs **only** when the task touches
-their area:
+```sh
+git status --short && git log --oneline --graph -8 && git submodule status
+./gradlew :app:kspOssDebugKotlin      # regenerate Room schema in app/schemas
+./gradlew :app:compileOssDebugKotlin  # fastest real verification (needs core AAR)
+./gradlew :app:assembleOssDebug       # full debug APK
+EXCLAVE_APPLICATION_ID=com.example.camera EXCLAVE_APP_LABEL=Camera ./scripts/build-stealth.sh
+```
 
-| Area | Read next |
-|---|---|
-| Privacy behavior / leak-model changes | `docs/privacy-hardening.md` |
-| Package rename, stealth builds | `docs/stealth-build.md`, `scripts/build-stealth.sh` |
-| Upstream sync | “Merging upstream” below |
+Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
+(see `library/core/AGENTS.md`). Never hand-edit the generated
+`app/build/generated/ksp/**`.
 
-Repo map: `app/` (Android app, `oss`/`play` flavors), `library/` (Go core
-bindings), `plugin/naive` + `plugin/shadowquic` (**git submodules**),
-`buildSrc/`, `bin/`, `gradle/`, `scripts/`, `docs/`.
+## Structure
 
-## Thinking protocol
+- `app/` — Android app (`oss` flavor + `play` source set, debug/release).
+- `library/core/` — gomobile Go core, builds `app/libs/libexclavecore.aar`.
+  Has its own `AGENTS.md`.
+- `library/proto`, `library/proto-stub`, `plugin/api`, `plugin/naive` —
+  Gradle modules; `plugin/naive/src/main/jni/naiveproxy` is a git submodule.
+- `app/schemas/…/*.json` — Room schema exports. Commit with the entity change.
+- `docs/privacy-hardening.md`, `docs/stealth-build.md` — read before touching
+  those areas.
 
-1. **Diagnose first.** Before any write: `git status --short`,
-   `git log --oneline --graph -8`, `git submodule status`. If a merge is in
-   progress (`.git/MERGE_HEAD` exists), finish or abort it before starting
-   anything else.
-2. **Evidence before synthesis.** Read the files; cite `path:line` for code
-   claims. `git ls-files -u` / `git diff --check` / `git grep "<<<<<<<"`
-   settle merge questions — never guess.
-3. **Smallest diff that solves the task.** When touching files upstream also
-   touches (`SagerNet.kt`, `DataStore.kt`, `ProxyEntity.kt`, `*Fmt.kt`,
-   `ConfigurationFragment.kt`, `SettingsPreferenceFragment.kt`,
-   `strings.xml`, `library/core/build*.sh|debug*.sh`), keep Excl’s deltas.
-4. **Verify, then commit.** `git diff --check` is mandatory. Build only what
-   you changed: `./gradlew :app:assembleOssDebug`, or stealth via
-   `EXCLAVE_APPLICATION_ID=… EXCLAVE_APP_LABEL=… ./scripts/build-stealth.sh`.
+## Do
 
-## Commit at every step (mandatory)
+- Diagnose first: `git status`, recent log, submodule status. If
+  `.git/MERGE_HEAD` exists, finish or abort the merge before other work.
+- Keep Excl deltas when touching files upstream also touches
+  (`SagerNet.kt`, `DataStore.kt`, `ProxyEntity.kt`, `*Fmt.kt`,
+  `ConfigurationFragment.kt`, `SettingsPreferenceFragment.kt`,
+  `strings.xml`, `library/core/build*.sh|debug*.sh`).
+- Keep `TYPE_VKTURN = 30` / `TYPE_SNELL = 31`. Upstream uses 30 for Snell,
+  but Excl shipped VkTurn as 30 first — renumbering either breaks stored
+  profiles. The comment in `ProxyEntity.kt` explains this; do not "fix" it.
+- Keep README title `# Excl`, `Excl` log tags, VkTurn plugin wiring
+  (`vkturn-plugin`/`libvkturn.so`). Do not re-add the ShadowQUIC plugin —
+  upstream moved ShadowQUIC into the core; only the plugin is gone.
+- Run `git diff --check` before every commit.
+- Commit one logical step at a time with an imperative subject
+  (`Fix …`, `Merge …`, `Harden …`); merge commits state the upstream ref
+  and the Excl behavior preserved. Stage paths explicitly.
+- Update this file in the same commit that changes a convention it documents.
 
-- One logical step = one commit. Finish the step, verify it, commit it —
-  never batch unrelated work into a single commit and never leave a session
-  with uncommitted work unless the user asked for it.
-- Stage explicitly (`git add <paths>`). Never `git commit -a`; never commit
-  strangers (`git status` must be clean of surprises first).
-- Messages: imperative subject (`Fix …`, `Merge …`, `Harden …`), plus a body
-  for merges and anything non-obvious. Merge commits must say **what
-  upstream ref was merged and what Excl behavior was preserved**.
-- Push, amend, rebase, or history rewrites only when explicitly requested.
+## Do not
 
-## Never commit
-
-- Secrets: `local.properties`, `/service_account_credentials.json`,
-  `*.keystore`/`*.jks`/`*.p12`/`*.pfx`. (`release.keystore` predates this
-  rule and is still tracked — needs rotation/removal, do **not** pile on.)
-- Build outputs: `*.apk`/`*.aab`, `app/**/release/output-metadata.json`,
-  `app/**/release/baselineProfiles/`, `build/`, `.gradle/`, `.idea/`.
-- Shared vs local ignores: team-wide rules go in `.gitignore`; personal
-  editor noise (`.vscode/`, `AGENTS.local.md`, …) goes in `.git/info/exclude`,
-  which is never committed.
-
-## Submodules & generated files
-
-- `plugin/naive/...` (and any future submodules) are submodule checkouts.
-  Don’t bump pins casually; drift shows as `MM` — reset with
+- Do not commit secrets (`local.properties`,
+  `/service_account_credentials.json`, `*.keystore`/`*.jks`/`*.p12`/`*.pfx`)
+  or build outputs (`*.apk`/`*.aab`, `app/**/release/output-metadata.json`,
+  `app/**/release/baselineProfiles/`, `build/`, `.gradle/`, `.idea/`).
+  `release.keystore` predates this rule and is still tracked — needs
+  rotation/removal, never pile on.
+- Do not use `git commit -a`, amend, push, rebase, or rewrite history unless
+  explicitly requested. Do not leave uncommitted work unless asked.
+- Do not bump submodule pins casually. Drift shows as `MM` — reset with
   `git submodule update --checkout -- <paths>` unless a bump is the task.
-- Partial clone caveat: this repo resolves `upstream` lazily
-  (`blob:none`), and submodule commits cannot be fetched from the
-  superproject promisor (`not our ref`). If a merge dies fetching a
-  submodule SHA, temporarily link the submodule stores, merge, then
-  remove the file again:
-  `printf '%s\n' "$PWD/.git/modules/<mod>/objects" \
-    >> .git/objects/info/alternates` … `rm .git/objects/info/alternates`.
-- Room schema `app/schemas/…/*.json` regenerates when entities change —
-  always commit it together with the entity change. If the identityHash
-  looks stale, run `./gradlew :app:kspOssDebugKotlin` and cross-check it
-  against the hash in the generated `SagerDatabase_Impl.kt`.
-- `version.properties` + `app/.../aboutlibraries*` are release chores;
-  don’t hand-edit them inside feature work.
+- Do not hand-edit `version.properties` or `app/.../aboutlibraries*`
+  inside feature work (release chores).
 
-## Merging upstream (safe procedure)
+## Ask first
 
-1. `git fetch upstream` and note the exact ref (`upstream/dev` SHA).
-2. `git merge upstream/dev`; resolve with Excl deltas kept (see §3 above,
-   especially README title `# Excl`, `Excl` log tags, Balancer/AWG/VkTurn,
-   privacy defaults, stealth applicationId/label plumbing).
-3. Reconcile `.gitignore` by union — keep this fork’s secret/output rules
-   even if upstream slimmed theirs.
-4. `git diff --check`, confirm Excl markers still present
-   (`grep -rn "Excl\|AMNEZIA_WG\|vkTurnBean" app/src/main --include …`),
-   then commit the merge with the upstream SHA in the message.
+- Deleting a protocol, flavor, or module (e.g. following an upstream removal
+  that kills an Excl feature — check Excl-local references first).
+- Changing profile `type` ints, Room entity fields, or the 36→37 migration
+  path (upstream-36 DBs lack the vkTurn column; Excl→Excl upgrades are covered).
+- Network-dependent operations (Go module downloads, full APK builds).
+
+## Upstream merges
+
+1. `git fetch upstream`; note the exact `upstream/dev` SHA.
+2. `git merge upstream/dev`. Partial-clone caveat: submodule commits cannot
+   be fetched from the superproject promisor (`not our ref`). If the merge
+   dies on one, temporarily link the submodule stores, then remove the file:
+   `printf '%s\n' "$PWD/.git/modules/<mod>/objects" \
+>> .git/objects/info/alternates` … `rm .git/objects/info/alternates`.
+3. Resolve keeping Excl deltas; reconcile `.gitignore` by union (keep the
+   fork's secret/output rules even if upstream slimmed theirs).
+4. If entities changed, run `:app:kspOssDebugKotlin` and cross-check
+   `app/schemas/…/37.json` (`identityHash` and `setupQueries`) against the
+   hash in generated `SagerDatabase_Impl.kt`.
+5. Confirm Excl markers
+   (`grep -rn "Excl\|AMNEZIA_WG\|vkTurnBean" app/src/main`) and commit with
+   the upstream SHA in the message.
+
+## Done means
+
+`git diff --check` clean, documented verification command green, Excl
+markers present after merges, `git status` shows only intended paths, one
+commit per logical step.
