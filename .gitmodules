@@ -1,3 +1,6 @@
 [submodule "plugin/naive/src/main/jni/naiveproxy"]
 	path = plugin/naive/src/main/jni/naiveproxy
 	url = https://github.com/klzgrad/naiveproxy
+[submodule "app/src/main/cpp/byedpi"]
+	path = app/src/main/cpp/byedpi
+	url = https://github.com/hufrea/byedpi.git

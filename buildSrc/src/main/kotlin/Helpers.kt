@@ -199,6 +199,7 @@ fun Project.setupApp() {
         .ifEmpty { "Excl" }
     setupAppCommon()
     androidApp.apply {
+        externalNativeBuild.cmake.path = file("src/main/cpp/CMakeLists.txt")
         defaultConfig.applicationId = pkgName
         defaultConfig.versionCode = verCode
         defaultConfig.versionName = verName
