@@ -1,8 +1,12 @@
 # AGENTS.md — Excl
 
 Excl (`origin` → `ctqvva/Excl`, branch `dev`) is a privacy-hardened Android
-proxy-client fork of Exclave (`upstream` → `dyhkwong/Exclave`). Fork identity
-lives in code: app name `Excl`, `Excl` log tags, Balancer / AmneziaWG / VkTurn
+proxy-client fork of Exclave (`upstream` → `dyhkwong/Exclave`). It exists to
+stop on-device apps from learning the active VPN server IP through local
+proxy inbounds, injected HTTP proxies, custom-config listeners, or the VPN
+bypass API. Guiding principle: make the VPN non-exploitable, not invisible
+(`tun0` visibility itself is unpatchable app-side). Fork identity lives in
+code: app name `Excl`, `Excl` log tags, Balancer / AmneziaWG / VkTurn
 support, privacy-hardening defaults. There is no unit test suite and no
 configured linter; verification means the compile/build commands below.
 
@@ -30,6 +34,10 @@ Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
 - `app/schemas/…/*.json` — Room schema exports. Commit with the entity change.
 - `docs/privacy-hardening.md`, `docs/stealth-build.md` — read before touching
   those areas.
+- Excl-local subsystems (no upstream counterpart — never "align" them away):
+  `privacy/` (`PrivacyHoneypot`, `PrivacyDefaults`, `AppDisguiseManager`),
+  balancer (`BalancerRuntimeState`, `BalancerDisplayResolver`),
+  `fmt/vkturn/` + `bin/plugin/vkturn.sh`, AmneziaWG in `fmt/wireguard/`.
 
 ## Do
 
@@ -68,6 +76,8 @@ Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
 
 ## Ask first
 
+- Weakening any privacy default, the honeypot, or bad-actor seeding
+  (`docs/privacy-hardening.md` is the threat model — read it first).
 - Deleting a protocol, flavor, or module (e.g. following an upstream removal
   that kills an Excl feature — check Excl-local references first).
 - Changing profile `type` ints, Room entity fields, or the 36→37 migration

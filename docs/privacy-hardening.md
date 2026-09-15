@@ -5,6 +5,12 @@ This fork carries local hardening for on-device VPN leak scenarios described in:
 - https://habr.com/ru/articles/1020080/
 - https://github.com/cherepavel/VPN-Detector
 - https://github.com/loop-uh/yourvpndead
+- https://github.com/xtclovver/RKNHardering
+
+Guiding principle: make the VPN non-exploitable, not invisible. `tun0`,
+split routes, and VPN-interface visibility are normal `VpnService`
+fingerprints no ordinary app can hide — what we stop is on-device apps
+using our local helpers as an oracle or proxy to learn the server IP.
 
 ## Threat model
 
@@ -47,12 +53,24 @@ For every release candidate:
 2. Connect to a test VPN server with a known public IP.
 3. Install and run `VPN-Detector`.
 4. Install and run `yourvpndead`.
-5. Confirm detector apps cannot recover the VPN server IP through localhost proxy access.
-6. Add detector apps to `Apps forced outside VPN` and confirm they are routed direct.
-7. Enable a custom config with local inbounds and confirm only loopback listeners remain reachable.
-8. Re-test after toggling `Require auth for local SOCKS5` off, to confirm the unsafe mode is obvious and intentional.
+5. Install and run `RKNHardering` (note: its proxy scan only flags
+   unauthenticated proxies, and some checks need root — green is a
+   "bypass not detected" signal, not proof).
+6. Confirm detector apps cannot recover the VPN server IP through localhost proxy access.
+7. Add detector apps to `Apps forced outside VPN` and confirm they are routed direct.
+8. Enable a custom config with local inbounds and confirm only loopback listeners remain reachable.
+9. Re-test after toggling `Require auth for local SOCKS5` off, to confirm the unsafe mode is obvious and intentional.
 
 ## Residual risk
 
 - The in-app updater/probe HTTP client does not support authenticated SOCKS5 in the current core bindings, so those app-owned requests stop using SOCKS5 when local SOCKS auth is enabled.
+- A hostile app routed through the VPN still learns the egress public IP from its own traffic. What we stop is use of our local helpers as an oracle or proxy.
+- The honeypot (`PrivacyHoneypot`, default decoys `1080,10808,3128,8080,8888`)
+  is a tripwire, not proof of safety; UID attribution can fail (`Not set`)
+  when Android withholds the owner UID.
+- The bad-actor seed list (`PrivacyDefaults`) is intentionally conservative —
+  "every possible bad actor app" is not a solvable static list.
+- Shortcut/Tasker intents are gated by a control token; old pinned shortcuts
+  and Tasker actions must be recreated once after that change.
+- API-only `vpn://` provisioning links still need online key provisioning.
 - A full release gate still needs device-level validation with the detector apps above. Static review alone is not enough for this class of issue.
