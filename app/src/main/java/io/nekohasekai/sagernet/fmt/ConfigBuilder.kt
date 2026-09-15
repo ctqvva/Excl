@@ -123,6 +123,7 @@ import io.nekohasekai.sagernet.ktx.mkPort
 import io.nekohasekai.sagernet.ktx.parseJson
 import io.nekohasekai.sagernet.ktx.toHysteriaPort
 import io.nekohasekai.sagernet.ktx.unescapeLineFeed
+import io.nekohasekai.sagernet.ktx.uuid5
 import io.nekohasekai.sagernet.utils.PackageCache
 import kotlin.io.encoding.Base64
 import libexclavecore.Libexclavecore
@@ -728,7 +729,7 @@ fun buildV2RayConfig(
                                             address = LOCALHOST
                                             port = localPort
                                             users = listOf(VLESSOutboundConfigurationObject.ServerObject.UserObject().apply {
-                                                id = uuidOrGenerate(bean.uuid)
+                                                id = uuid5(bean.uuid)
                                                 encryption = "none"
                                             })
                                         })
