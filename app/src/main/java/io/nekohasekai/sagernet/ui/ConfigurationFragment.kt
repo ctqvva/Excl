@@ -38,7 +38,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.core.view.size
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DefaultItemAnimator
@@ -74,12 +73,10 @@ import io.nekohasekai.sagernet.widget.UndoSnackbarManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import libsagernetcore.Libsagernetcore
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.zip.ZipInputStream
 import kotlin.concurrent.timerTask
-import androidx.core.net.toUri
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.internal.BalancerBean
 import io.nekohasekai.sagernet.fmt.internal.ChainBean
@@ -313,22 +310,35 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
                 if (proxies.isEmpty()) {
-                    if (!fileText.contains("\n") && !fileText.contains("\r")
-                        && fileText.startsWith("exclave://", ignoreCase = true)
-                        && fileText.substring("exclave://".length).startsWith("subscription?", ignoreCase = true)) {
-                        (requireActivity() as? MainActivity)?.importSubscription(fileText.toUri())
-                    } else if (!fileText.contains("\n") && !fileText.contains("\r") && isHTTPorHTTPSURL(fileText)) {
-                        val builder = Libsagernetcore.newURL("exclave").apply {
-                            host = "subscription"
-                        }
-                        builder.addQueryParameter("url", fileText)
-                        (requireActivity() as? MainActivity)?.importSubscription(builder.string.toUri())
+                    if (!fileText.contains("\n") && !fileText.contains("\r") && isHTTPorHTTPSURL(fileText)) {
+                        (requireActivity() as? MainActivity)?.importSubscription(fileText)
                     } else {
                         onMainDispatcher {
                             snackbar(getString(R.string.no_proxies_found_in_file)).show()
                         }
                     }
                 } else import(proxies)
+            } catch (e: Exception) {
+                Logs.w(e)
+                onMainDispatcher {
+                    snackbar(e.readableMessage).show()
+                }
+            }
+        }
+    }
+
+    val importBackupFile = registerForActivityResult(ActivityResultContracts.GetContent()) { file ->
+        if (file != null) runOnDefaultDispatcher {
+            try {
+                val text = requireContext().contentResolver.openInputStream(file)!!.use {
+                    it.bufferedReader().readText()
+                }
+                val proxies = parseBackupLines(text)
+                if (proxies.isNotEmpty()) {
+                    import(proxies)
+                } else onMainDispatcher {
+                    snackbar(getString(R.string.no_proxies_found_in_file)).show()
+                }
             } catch (e: Exception) {
                 Logs.w(e)
                 onMainDispatcher {
@@ -401,16 +411,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                         try {
                             val proxies = RawUpdater.parseRaw(text)
                             if (proxies.isNullOrEmpty()) {
-                                if (!text.contains("\n") && !text.contains("\r")
-                                    && text.startsWith("exclave://", ignoreCase = true)
-                                    && text.substring("exclave://".length).startsWith("subscription?", ignoreCase = true)) {
-                                    (requireActivity() as? MainActivity)?.importSubscription(text.toUri())
-                                } else if (!text.contains("\n") && !text.contains("\r") && isHTTPorHTTPSURL(text)) {
-                                    val builder = Libsagernetcore.newURL("exclave").apply {
-                                        host = "subscription"
-                                    }
-                                    builder.addQueryParameter("url", text)
-                                    (requireActivity() as? MainActivity)?.importSubscription(builder.string.toUri())
+                                if (!text.contains("\n") && !text.contains("\r") && isHTTPorHTTPSURL(text)) {
+                                    (requireActivity() as? MainActivity)?.importSubscription(text)
                                 } else onMainDispatcher {
                                     snackbar(getString(R.string.no_proxies_found_in_clipboard)).show()
                                 }
@@ -428,6 +430,31 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             R.id.action_import_file -> {
                 startFilesForResult(importFile, "*/*")
+            }
+            R.id.action_import_backup_clipboard -> {
+                val text = SagerNet.getClipboardText()
+                if (text.isBlank()) {
+                    snackbar(getString(R.string.clipboard_empty)).show()
+                } else {
+                    runOnDefaultDispatcher {
+                        try {
+                            val proxies = parseBackupLines(text)
+                            if (proxies.isNotEmpty()) {
+                                import(proxies)
+                            } else onMainDispatcher {
+                                snackbar(getString(R.string.no_proxies_found_in_file)).show()
+                            }
+                        } catch (e: Exception) {
+                            Logs.w(e)
+                            onMainDispatcher {
+                                snackbar(e.readableMessage).show()
+                            }
+                        }
+                    }
+                }
+            }
+            R.id.action_import_backup_file -> {
+                startFilesForResult(importBackupFile, "*/*")
             }
             R.id.action_new_socks -> {
                 startActivity(Intent(requireActivity(), SocksSettingsActivity::class.java))
@@ -475,9 +502,6 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             R.id.action_new_vk_turn -> {
                 startActivity(Intent(requireActivity(), VkTurnSettingsActivity::class.java))
-            }
-            R.id.action_new_shadowtls -> {
-                startActivity(Intent(requireActivity(), ShadowTLSSettingsActivity::class.java))
             }
             R.id.action_new_juicity -> {
                 startActivity(Intent(requireActivity(), JuicitySettingsActivity::class.java))
@@ -1016,6 +1040,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         lateinit var proxyGroup: ProxyGroup
         var selected = false
         var scrolled = false
+        val showBackup = DataStore.experimentalFlagsProperties.getBooleanProperty("enableProfileBackup")
 
         override fun onCreateView(
             inflater: LayoutInflater,
@@ -1034,6 +1059,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             if (::proxyGroup.isInitialized) {
                 outState.putParcelable("proxyGroup", proxyGroup)
             }
+            if (::layoutManager.isInitialized) {
+                outState.putInt("scrollPosition", layoutManager.findFirstVisibleItemPosition())
+            }
         }
 
         override fun onViewStateRestored(savedInstanceState: Bundle?) {
@@ -1042,6 +1070,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             savedInstanceState?.getParcelable<ProxyGroup>("proxyGroup")?.also {
                 proxyGroup = it
                 onViewCreated(requireView(), null)
+            }
+            savedInstanceState?.getInt("scrollPosition", -1)?.takeIf { it >= 0 }?.let { pos ->
+                scrolled = true
+                configurationListView.scrollToPosition(pos)
             }
         }
 
@@ -1065,12 +1097,11 @@ class ConfigurationFragment @JvmOverloads constructor(
         override fun onResume() {
             super.onResume()
 
-            if (::configurationListView.isInitialized && configurationListView.size == 0) {
-                configurationListView.adapter = adapter
-                runOnDefaultDispatcher {
-                    adapter.reloadProfiles()
+            if (::adapter.isInitialized) {
+                if (adapter.itemCount == 0) {
+                    runOnDefaultDispatcher { adapter.reloadProfiles() }
                 }
-            } else if (!::configurationListView.isInitialized) {
+            } else {
                 onViewCreated(requireView(), null)
             }
             checkOrderMenu()
@@ -1080,7 +1111,14 @@ class ConfigurationFragment @JvmOverloads constructor(
                     ?.toolbar?.menu?.findItem(R.id.action_new_shadowquic)?.isVisible  = false
             }
 
-            configurationListView.requestFocus()
+            if (showBackup) {
+                (parentFragment as? ToolbarFragment)
+                    ?.toolbar?.menu?.findItem(R.id.action_import_backup)?.isVisible = true
+            }
+
+            if (::configurationListView.isInitialized) {
+                configurationListView.requestFocus()
+            }
         }
 
         fun checkOrderMenu() {
@@ -1222,6 +1260,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             var configurationIdList: MutableList<Long> = mutableListOf()
             val configurationList = HashMap<Long, ProxyEntity>()
+            val pendingDeletedIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
 
             private fun getItem(profileId: Long): ProxyEntity? {
                 var profile = configurationList[profileId]
@@ -1261,6 +1300,37 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             override fun getItemCount(): Int {
                 return configurationIdList.size
+            }
+            var activeSelectionId: Long = -1
+
+            fun refreshSelection() {
+                val newId = DataStore.selectedProxy
+                if (activeSelectionId == newId) return
+                val oldId = activeSelectionId
+                activeSelectionId = newId
+
+                listOf(oldId, newId).forEach { id ->
+                    val index = configurationIdList.indexOf(id)
+                    if (index != -1) notifyItemChanged(index, "PAYLOAD_SELECTION_CHANGE")
+                }
+            }
+
+            override fun onBindViewHolder(
+                holder: ConfigurationHolder,
+                position: Int,
+                payloads: MutableList<Any>
+            ) {
+                if (payloads.contains("PAYLOAD_SELECTION_CHANGE")) {
+                    val entityId = configurationIdList[position]
+
+                    val isSelected = (entityId == activeSelectionId)
+                    val isStarted = isSelected && SagerNet.started && DataStore.startedProfile == entityId
+
+                    holder.selectedView.visibility = if (isSelected) View.VISIBLE else View.INVISIBLE
+                    holder.deleteButton.isEnabled = !isStarted
+                } else {
+                    super.onBindViewHolder(holder, position, payloads)
+                }
             }
 
             private val updated = HashSet<ProxyEntity>()
@@ -1313,10 +1383,14 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             override fun undo(actions: List<Pair<Int, ProxyEntity>>) {
                 for ((index, item) in actions) {
+                    pendingDeletedIds.remove(item.id)
                     configurationListView.post {
-                        configurationList[item.id] = item
-                        configurationIdList.add(index, item.id)
-                        notifyItemInserted(index)
+                        if (!configurationIdList.contains(item.id)) {
+                            configurationList[item.id] = item
+                            val safeIndex = index.coerceIn(0, configurationIdList.size)
+                            configurationIdList.add(safeIndex, item.id)
+                            notifyItemInserted(safeIndex)
+                        }
                     }
                 }
             }
@@ -1375,13 +1449,15 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             override suspend fun onRemoved(groupId: Long, profileId: Long) {
                 if (groupId != proxyGroup.id) return
-                val index = configurationIdList.indexOf(profileId)
-                if (index < 0) return
 
+                pendingDeletedIds.remove(profileId)
                 configurationListView.post {
-                    configurationIdList.removeAt(index)
-                    configurationList.remove(profileId)
-                    notifyItemRemoved(index)
+                    val index = configurationIdList.indexOf(profileId)
+                    if (index >= 0) {
+                        configurationIdList.removeAt(index)
+                        configurationList.remove(profileId)
+                        notifyItemRemoved(index)
+                    }
                 }
             }
 
@@ -1407,8 +1483,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     return
                 }
 
+                activeSelectionId = selectedItem?.id ?: DataStore.selectedProxy
 
                 var newProfiles = SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
+                newProfiles = newProfiles.filter { it.id !in pendingDeletedIds }
                 when (proxyGroup.order) {
                     GroupOrder.BY_NAME -> {
                         newProfiles = newProfiles.sortedBy { it.displayName() }
@@ -1435,10 +1513,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                     configurationIdList.addAll(newProfileIds)
                     notifyDataSetChanged()
 
-                    if (selectedProfileIndex != -1) {
+                    if (selectedProfileIndex != -1 && !scrolled) {
                         configurationListView.scrollTo(selectedProfileIndex, true)
-                    } else if (newProfiles.isNotEmpty()) {
+                        scrolled = true
+                    } else if (newProfiles.isNotEmpty() && !scrolled) {
                         configurationListView.scrollTo(0, true)
+                        scrolled = true
                     }
 
                 }
@@ -1482,18 +1562,16 @@ class ConfigurationFragment @JvmOverloads constructor(
                     view.setOnClickListener {
                         runOnDefaultDispatcher {
                             var update: Boolean
-                            var lastSelected: Long
                             profileAccess.withLock {
                                 update = DataStore.selectedProxy != proxyEntity.id
-                                lastSelected = DataStore.selectedProxy
                                 DataStore.selectedProxy = proxyEntity.id
-                                onMainDispatcher {
-                                    selectedView.visibility = View.VISIBLE
-                                }
                             }
 
                             if (update) {
-                                ProfileManager.postUpdate(lastSelected)
+                                onMainDispatcher {
+                                    adapter.refreshSelection()
+                                }
+
                                 if (pa.state.canStop && reloadAccess.tryLock()) {
                                     SagerNet.reloadService()
                                     reloadAccess.unlock()
@@ -1645,12 +1723,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                deleteButton.setOnClickListener {
-                    adapter.let {
-                        val index = it.configurationIdList.indexOf(proxyEntity.id)
-                        if (index >= 0) {
-                            it.remove(index)
-                            undoManager.remove(index to proxyEntity)
+                deleteButton.setOnClickListener { view ->
+                    view.post {
+                        adapter.let {
+                            val index = it.configurationIdList.indexOf(proxyEntity.id)
+                            if (index >= 0) {
+                                it.remove(index)
+                                it.pendingDeletedIds.add(proxyEntity.id)
+                                undoManager.remove(index to proxyEntity)
+                            }
                         }
                     }
                 }
@@ -1676,8 +1757,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                             popup.menu.removeItem(R.id.action_qr)
                             popup.menu.removeItem(R.id.action_clipboard)
                         }
-                        if (!proxyEntity.canExportBackup()) {
-                            popup.menu.removeItem(R.id.action_export_backup)
+                        if (showBackup && proxyEntity.canExportBackup()) {
+                            popup.menu.findItem(R.id.action_export_backup).isVisible = true
                         }
 
                         popup.setOnMenuItemClickListener(this@ConfigurationHolder)

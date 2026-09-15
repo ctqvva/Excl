@@ -33,7 +33,7 @@ import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.shadowsocks.parseShadowsocksConfig
 import io.nekohasekai.sagernet.fmt.wireguard.parseWireGuardConfig
 import io.nekohasekai.sagernet.ktx.*
-import libsagernetcore.Libsagernetcore
+import libexclavecore.Libexclavecore
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.LoaderOptions
 import org.yaml.snakeyaml.Yaml
@@ -67,7 +67,7 @@ object RawUpdater : GroupUpdater() {
             proxies = contentText?.let { parseRaw(contentText) }
                 ?: error(app.getString(R.string.no_proxies_found_in_subscription))
         } else {
-            val response = Libsagernetcore.newHttpClient().apply {
+            val response = Libexclavecore.newHttpClient().apply {
                 if (SagerNet.started && DataStore.startedProfile > 0) {
                     useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
                 }
@@ -77,6 +77,13 @@ object RawUpdater : GroupUpdater() {
                     setUserAgent(subscription.customUserAgent)
                 } else {
                     setUserAgent(USER_AGENT)
+                }
+                if (subscription.httpHeaders.isNotEmpty()) {
+                    for (header in subscription.httpHeaders.replace("\r\n", "\n").split("\n")) {
+                        if (header.isEmpty()) continue
+                        if (!header.contains(":")) error("invalid http header")
+                        setHeader(header.substringBefore(":"), header.substringAfter(":").trimStart())
+                    }
                 }
             }.execute()
 
@@ -375,7 +382,7 @@ object RawUpdater : GroupUpdater() {
     }
 }
 
-private class YAMLConstructor(
+class YAMLConstructor(
     options: LoaderOptions,
 ) : Constructor(options) {
     override fun constructObject(node: Node): Any? {

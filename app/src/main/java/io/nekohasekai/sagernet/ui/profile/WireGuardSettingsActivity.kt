@@ -125,7 +125,7 @@ class WireGuardSettingsActivity : ProfileSettingsActivity<WireGuardBean>() {
             setOnBindEditTextListener(EditTextPreferenceModifiers.Number)
         }
         findPreference<EditTextPreference>(Key.SERVER_WIREGUARD_KEEPALIVE_INTERVAL)!!.apply {
-            setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
+            setOnBindEditTextListener(EditTextPreferenceModifiers.Number)
         }
         listOf(
             Key.SERVER_AMNEZIAWG_JC,

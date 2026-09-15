@@ -47,9 +47,9 @@ import io.nekohasekai.sagernet.utils.PackageCache
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import libsagernetcore.AppStats
-import libsagernetcore.Libsagernetcore
-import libsagernetcore.TrafficListener
+import libexclavecore.AppStats
+import libexclavecore.Libexclavecore
+import libexclavecore.TrafficListener
 import java.net.UnknownHostException
 import com.github.shadowsocks.plugin.PluginManager as ShadowsocksPluginPluginManager
 import io.nekohasekai.sagernet.aidl.AppStats as AidlAppStats
@@ -289,7 +289,7 @@ class BaseService {
         override fun urlTest(): Int {
             val v2rayPoint = data?.proxy?.v2rayPoint ?: error("core not started")
             try {
-                return Libsagernetcore.urlTest(
+                return Libexclavecore.urlTest(
                     v2rayPoint, TAG_SOCKS, DataStore.connectionTestURL, 5000
                 )
             } catch (e: Exception) {
@@ -522,7 +522,7 @@ class BaseService {
                     ?.takeIf { it.isNotBlank() }
                     ?: DataStore.connectionTestURL
                 val healthy = runCatching {
-                    Libsagernetcore.urlTest(
+                    Libexclavecore.urlTest(
                         runningProxy.v2rayPoint,
                         TAG_SOCKS,
                         probeUrl,
@@ -540,7 +540,7 @@ class BaseService {
                 if (data.lastObservedUnderlyingNetwork != networkKey) return@runOnDefaultDispatcher
 
                 val stillUnhealthy = runCatching {
-                    Libsagernetcore.urlTest(
+                    Libexclavecore.urlTest(
                         stableProxy.v2rayPoint,
                         TAG_SOCKS,
                         probeUrl,

@@ -196,7 +196,7 @@
     <string name="always_show_address">Всегда показывать адрес</string>
     <string name="unavailable">Недоступно</string>
     <string name="available">%d мс</string>
-    <string name="probe_interval">Интервал наблюдения балансировщика (с)</string>
+    <string name="probe_interval">Интервал между проверками (сек.)</string>
     <string name="random">Случайно</string>
     <string name="list">Список</string>
     <string name="auto">Авто</string>
@@ -317,8 +317,6 @@
     <string name="route_rules_provider">Поставщик ресурсов правил</string>
     <string name="route_assets">Ресурсы</string>
     <string name="route_manage_assets">Управление ресурсами</string>
-    <string name="route_reverse_redirect">Обратное перенаправление</string>
-    <string name="route_reverse">Обратный прокси</string>
     <string name="route_reset">Сброс</string>
     <string name="route_bypass_ip">IP правило для %s</string>
     <string name="route_bypass_domain">Правило домена для %s</string>
@@ -356,8 +354,8 @@
     <string name="obfs">Obfs</string>
     <string name="protocol_param">Параметры протокола</string>
     <string name="speed">%s/с</string>
-    <string name="hysteria_download_mbps">Максимальная скорость загрузки (в Мбит/с)</string>
-    <string name="hysteria_upload_mbps">Максимальная скорость загрузки (в Мбит/с)</string>
+    <string name="hysteria_download_mbps">Максимальная скорость получения (Мбит/с)</string>
+    <string name="hysteria_upload_mbps">Максимальная скорость отправки (Мбит/с)</string>
     <string name="hysteria_auth_type">Тип аутентификации</string>
     <string name="hysteria_obfs">Пароль для обфускации</string>
     <string name="experimental_no_termination_signal">Не отправлять одинарный дуплексный сигнал завершения соединения для TCP-соединения при передаче через VMess. Это нарушит работу некоторых приложений.</string>
@@ -521,7 +519,6 @@
     <string name="utls_fingerprint">uTLS-отпечаток</string>
     <string name="route_need_location_enabled">Правило маршрутизации `%s` требует доступа к вашему **Wi-Fi SSID**, но для этого требуется **включенное местоположение**</string>
     <string name="route_need_fine_location">Правило маршрутизации `%s` требует доступа к вашему **Wi-Fi SSID**, но для этого требуется **разрешение на точное определение местоположения**</string>
-    <string name="shadowsocks_2022_implementation">Реализация Shadowsocks 2022</string>
     <string name="bootstrap_dns">Загрузочный DNS</string>
     <string name="use_local_dns_as_bootstrap_dns">Использовать системный DNS как DNS начальной загрузки</string>
     <string name="brook_fragment">Фрагмент</string>
@@ -658,4 +655,11 @@
     <string name="require_socks">Включить входящий трафик SOCKS5</string>
     <string name="custom_package_name_or_uid">Пользовательское имя пакета или UID</string>
     <string name="socks5_udp_authentication_warning">UDP-трафик в SOCKS5 не защищён аутентификацией по имени пользователя и паролю. Если UDP включён, аутентификацию можно легко обойти.</string>
+    <string name="hysteria2_omit_max_datagram_frame_size_sum">Если сервер Hysteria 2 не поддерживает это критическое изменение, UDP будет недоступен. Это временная опция, которая может быть удалена в будущем.</string>
+    <string name="ssh_keepalive_interval">Интервал проверки соединения (сек)</string>
+    <string name="custom_outbound">Пользовательское исходящее соединение</string>
+    <string name="hysteria2_gecko_max_packet_size">Максимальный размер пакета</string>
+    <string name="hysteria2_gecko_min_packet_size">Минимальный размер пакета</string>
+    <string name="enable_hysteria2_omit_max_datagram_frame_size">Включить Hysteria 2 OmitMaxDatagramFrameSize</string>
+    <string name="nearby_devices_permission_notice">Для работы требуется разрешение «Близлежащие устройства», но оно не предоставлено.</string>
 </resources>

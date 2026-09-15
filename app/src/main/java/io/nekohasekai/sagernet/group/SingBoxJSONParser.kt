@@ -240,7 +240,7 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                                     reality.getBoolean("enabled")?.also { enabled ->
                                         if (enabled) {
                                             v2rayBean.security = "reality"
-                                            reality.getString("public_key")?.also {
+                                            reality.getString("public_key")?.ifEmpty { return listOf() }?.also {
                                                 v2rayBean.realityPublicKey = it
                                             }
                                             reality.getString("short_id")?.also {
@@ -249,8 +249,8 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                                         }
                                     }
                                 }
-                                if (v2rayBean is VLESSBean) {
-                                    // Only parse ECH for shit VLESS free nodes
+                                if (v2rayBean is VLESSBean || v2rayBean is TrojanBean) {
+                                    // Only parse ECH for shit VLESS or Trojan free nodes
                                     tls.getObject("ech")?.also { ech ->
                                     ech.getBoolean("enabled")?.also { enabled ->
                                         if (enabled) {
@@ -370,6 +370,10 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
             return listOf(v2rayBean)
         }
         "hysteria2" -> {
+            outbound.getObject("realm")?.also {
+                // unsupported
+                return listOf()
+            }
             val hysteria2Bean = Hysteria2Bean().apply {
                 outbound.getString("tag", ignoreCase = false)?.also {
                     name = it
@@ -483,9 +487,26 @@ fun parseSingBoxOutbound(outbound: JsonObject): List<AbstractBean> {
                 } ?: return listOf()
                 outbound.getObject("obfs")?.also { obfuscation ->
                     obfuscation.getString("type")?.takeIf { it.isNotEmpty() }?.also { type ->
-                        if (type != "salamander") return listOf()
-                        obfuscation.getString("password")?.also {
-                            obfs = it
+                        when (type) {
+                            "salamander" -> {
+                                obfsType = "salamander"
+                                obfuscation.getString("password")?.also {
+                                    obfsPassword = it
+                                }
+                            }
+                            "gecko" -> {
+                                obfsType = "gecko"
+                                obfuscation.getString("password")?.also {
+                                    obfsPassword = it
+                                }
+                                obfuscation.getInt("min_packet_size")?.takeIf { it > 0 }?.also {
+                                    geckoMinPacketSize = it
+                                }
+                                obfuscation.getInt("max_packet_size")?.takeIf { it > 0 }?.also {
+                                    geckoMaxPacketSize = it
+                                }
+                            }
+                            else -> return listOf()
                         }
                     }
                 }

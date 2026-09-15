@@ -29,12 +29,12 @@ import org.jetbrains.annotations.NotNull;
 import io.nekohasekai.sagernet.fmt.AbstractBean;
 import io.nekohasekai.sagernet.fmt.KryoConverters;
 import io.nekohasekai.sagernet.ktx.NetsKt;
-import libsagernetcore.Libsagernetcore;
+import libexclavecore.Libexclavecore;
 
 public class Hysteria2Bean extends AbstractBean {
 
     public String auth;
-    public String obfs;
+    public String obfsPassword;
     public String sni;
     public String pinnedPeerCertificateSha256;
     public String pinnedPeerCertificatePublicKeySha256;
@@ -53,12 +53,16 @@ public class Hysteria2Bean extends AbstractBean {
     public String mtlsCertificatePrivateKey;
     public String congestionControl;
     public String bbrProfile;
+    public Boolean omitMaxDatagramFrameSize;
+    public String obfsType;
+    public Integer geckoMinPacketSize;
+    public Integer geckoMaxPacketSize;
 
     @Override
     public void initializeDefaultValues() {
         super.initializeDefaultValues();
         if (auth == null) auth = "";
-        if (obfs == null) obfs = "";
+        if (obfsPassword == null) obfsPassword = "";
         if (sni == null) sni = "";
         if (pinnedPeerCertificateSha256 == null) pinnedPeerCertificateSha256 = "";
         if (pinnedPeerCertificatePublicKeySha256 == null) pinnedPeerCertificatePublicKeySha256 = "";
@@ -77,14 +81,25 @@ public class Hysteria2Bean extends AbstractBean {
         if (mtlsCertificatePrivateKey == null) mtlsCertificatePrivateKey = "";
         if (congestionControl == null) congestionControl = "bbr";
         if (bbrProfile == null) bbrProfile = "standard";
+        if (omitMaxDatagramFrameSize == null) omitMaxDatagramFrameSize = false;
+        if (obfsType == null) obfsType = "";
+        if (geckoMinPacketSize == null) geckoMinPacketSize = 0;
+        if (geckoMaxPacketSize == null) geckoMaxPacketSize = 0;
     }
 
     @Override
     public void serialize(ByteBufferOutput output) {
-        output.writeInt(7);
+        output.writeInt(9);
         super.serialize(output);
         output.writeString(auth);
-        output.writeString(obfs);
+        switch (obfsType) {
+            case "salamander", "gecko":
+                output.writeString(obfsPassword);
+                break;
+            default:
+                output.writeString(""); // obfsPassword
+                break;
+        }
         output.writeString(sni);
         output.writeString(pinnedPeerCertificateSha256);
         output.writeString(pinnedPeerCertificatePublicKeySha256);
@@ -104,6 +119,18 @@ public class Hysteria2Bean extends AbstractBean {
         output.writeLong(hopIntervalMax);
         output.writeString(congestionControl);
         output.writeString(bbrProfile);
+        output.writeBoolean(omitMaxDatagramFrameSize);
+        output.writeString(obfsType);
+        switch (obfsType) {
+            case "gecko":
+                output.writeInt(geckoMinPacketSize);
+                output.writeInt(geckoMaxPacketSize);
+                break;
+            default:
+                output.writeInt(0); // geckoMinPacketSize
+                output.writeInt(0); // geckoMaxPacketSize
+                break;
+        }
     }
 
     @Override
@@ -111,7 +138,10 @@ public class Hysteria2Bean extends AbstractBean {
         int version = input.readInt();
         super.deserialize(input);
         auth = input.readString();
-        obfs = input.readString();
+        obfsPassword = input.readString();
+        if (!obfsPassword.isEmpty() && version < 9) {
+            obfsType = "salamander";
+        }
         sni = input.readString();
         pinnedPeerCertificateSha256 = input.readString();
         if (version >= 4) {
@@ -165,6 +195,31 @@ public class Hysteria2Bean extends AbstractBean {
             congestionControl = input.readString();
             bbrProfile = input.readString();
         }
+        if (version >= 8) {
+            omitMaxDatagramFrameSize = input.readBoolean();
+        }
+        if (version >= 9) {
+            obfsType = input.readString();
+            switch (obfsType) {
+                case "salamander":
+                    input.readInt(); // geckoMinPacketSize
+                    input.readInt(); // geckoMaxPacketSize
+                    geckoMinPacketSize = 0;
+                    geckoMaxPacketSize = 0;
+                    break;
+                case "gecko":
+                    geckoMinPacketSize = input.readInt();
+                    geckoMaxPacketSize = input.readInt();
+                    break;
+                default:
+                    input.readInt(); // geckoMinPacketSize
+                    input.readInt(); // geckoMaxPacketSize
+                    geckoMinPacketSize = 0;
+                    geckoMaxPacketSize = 0;
+                    obfsPassword = "";
+                    break;
+            }
+        }
     }
 
     @Override
@@ -196,11 +251,18 @@ public class Hysteria2Bean extends AbstractBean {
         bean.hopIntervalMax = hopIntervalMax;
         bean.congestionControl = congestionControl;
         bean.bbrProfile = bbrProfile;
+        bean.omitMaxDatagramFrameSize = omitMaxDatagramFrameSize;
+        if (bean.geckoMinPacketSize == null || bean.geckoMinPacketSize == 0) {
+            bean.geckoMinPacketSize = geckoMinPacketSize;
+        }
+        if (bean.geckoMaxPacketSize == null || bean.geckoMaxPacketSize == 0) {
+            bean.geckoMaxPacketSize = geckoMaxPacketSize;
+        }
     }
 
     @Override
     public String displayAddress() {
-        if (Libsagernetcore.isIPv6(serverAddress)) {
+        if (Libexclavecore.isIPv6(serverAddress)) {
             return "[" + serverAddress + "]:" + serverPorts;
         } else {
             return NetsKt.wrapIDN(serverAddress) + ":" + serverPorts;
@@ -233,14 +295,14 @@ public class Hysteria2Bean extends AbstractBean {
 
     @Override
     public boolean isInsecure() {
-        if (Libsagernetcore.isLoopbackIP(serverAddress) || serverAddress.equals("localhost")) {
+        if (Libexclavecore.isLoopbackIP(serverAddress) || serverAddress.equals("localhost")) {
             return false;
         }
         if (echEnabled) {
             // do not care if DNS server is reliable or not
             return false;
         }
-        if (!obfs.isEmpty()) {
+        if (!obfsPassword.isEmpty()) {
             return false;
         }
         if (!allowInsecure) {

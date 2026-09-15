@@ -21,7 +21,7 @@ package io.nekohasekai.sagernet.fmt.vkturn
 
 import io.nekohasekai.sagernet.ktx.applyDefaultValues
 import io.nekohasekai.sagernet.ktx.queryParameter
-import libsagernetcore.Libsagernetcore
+import libexclavecore.Libexclavecore
 
 private fun String?.toBooleanCompat(default: Boolean = false): Boolean {
     return when (this?.lowercase()) {
@@ -32,7 +32,7 @@ private fun String?.toBooleanCompat(default: Boolean = false): Boolean {
 }
 
 fun parseVkTurn(server: String): VkTurnBean {
-    val link = Libsagernetcore.parseURL(server)
+    val link = Libexclavecore.parseURL(server)
     return VkTurnBean().applyDefaultValues().apply {
         serverAddress = link.host.ifEmpty { error("empty host") }
         serverPort = link.port.takeIf { it > 0 } ?: 56000
@@ -73,7 +73,7 @@ fun parseVkTurn(server: String): VkTurnBean {
 }
 
 fun VkTurnBean.toUri(): String {
-    val builder = Libsagernetcore.newURL("vkturn").apply {
+    val builder = Libexclavecore.newURL("vkturn").apply {
         setHostPort(serverAddress.ifEmpty { error("empty server address") }, serverPort)
         if (name.isNotEmpty()) fragment = name
     }

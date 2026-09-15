@@ -117,7 +117,6 @@
     <string name="route_asset_no_update">Sudah terbaru</string>
     <string name="route_asset_status">Versi lokal: %s</string>
     <string name="route_rules_official">Resmi</string>
-    <string name="route_reverse">Proksi terbalik</string>
     <string name="route_reset">Reset</string>
     <string name="empty_route">Rute kosong</string>
     <string name="route_profile">Pilih profil…</string>
@@ -156,7 +155,6 @@
     <string name="route_opt_bypass_lan">Lewati alamat privat</string>
     <string name="route_not_asset">Bukan file aset: diharapkan .dat, tetapi %s</string>
     <string name="route_rules_provider">Penyedia aset rute</string>
-    <string name="route_reverse_redirect">Alamat proksi terbalik</string>
     <string name="route_bypass_domain">Aturan domain untuk %s</string>
     <string name="empty_route_notice">Konfigurasikan beberapa aturan sebelum menyimpan</string>
     <string name="delete_route_prompt">Apakah Anda yakin ingin menghapus rute ini?</string>
@@ -420,7 +418,6 @@
     <string name="reality_short_id">ID Pendek REALITY</string>
     <string name="reality_fingerprint">Sidik jari uTLS REALITY</string>
     <string name="wireguard_reserved">Cadangan</string>
-    <string name="shadowsocks_2022_implementation">Implementasi Shadowsocks 2022</string>
     <string name="bootstrap_dns">DNS bootstrap</string>
     <string name="use_local_dns_as_bootstrap_dns">Gunakan DNS sistem sebagai DNS bootstrap</string>
     <string name="brook_fragment">Fragmentasi</string>
@@ -559,4 +556,5 @@
     <string name="hysteria_hop_interval_max">Interval lompat port maksimum (d)</string>
     <string name="hysteria_bbr_profile">Profil BBR</string>
     <string name="custom_package_name_or_uid">Nama paket atau UID kustom</string>
+    <string name="socks5_udp_authentication_warning">SOCKS5 UDP tidak di proteksi otentifikasi nama dan Sandi. jika UDP di aktifkan, otentifikasi dapat di lewati dengan mudah.</string>
 </resources>

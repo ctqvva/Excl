@@ -38,6 +38,7 @@ import io.nekohasekai.sagernet.utils.PackageCache
 import java.io.BufferedReader
 import java.io.StringReader
 import java.security.SecureRandom
+import java.util.Locale
 import java.util.Properties
 
 object DataStore : OnPreferenceDataStoreChangeListener {
@@ -151,7 +152,14 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var speedInterval by configurationStore.stringToInt(Key.SPEED_INTERVAL)
 
     var remoteDns by configurationStore.stringNotBlack(Key.REMOTE_DNS) { "tcp://1.1.1.1" }
-    var directDns by configurationStore.stringNotBlack(Key.DIRECT_DNS) { "tcp://223.5.5.5" }
+    var directDns by configurationStore.stringNotBlack(Key.DIRECT_DNS) {
+        when (Locale.getDefault().country) {
+            "CN" -> "tcp://223.5.5.5"
+            "IR" -> "tcp://178.22.122.100"
+            "RU" -> "tcp://77.88.8.8"
+            else -> "tcp://1.1.1.1"
+        }
+    }
     var bootstrapDns by configurationStore.stringNotBlack(Key.BOOTSTRAP_DNS)
     var useLocalDnsAsDirectDns by configurationStore.boolean(Key.USE_LOCAL_DNS_AS_DIRECT_DNS) { Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q }
     var useLocalDnsAsBootstrapDns by configurationStore.boolean(Key.USE_LOCAL_DNS_AS_BOOTSTRAP_DNS) { true }
@@ -183,6 +191,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var enableFragmentForDirect by configurationStore.boolean(Key.ENABLE_FRAGMENT_FOR_DIRECT)
     var fragmentMethod by configurationStore.stringToInt(Key.FRAGMENT_METHOD)
     var realityDisableX25519Mlkem768 by configurationStore.boolean(Key.REALITY_DISABLE_X25519MLKEM768)
+    var hysteria2OmitMaxDatagramFrameSize by configurationStore.boolean(Key.HYSTERIA2_OMIT_MAX_DATAGRAM_FRAME_SIZE)
     var grpcServiceNameCompat by configurationStore.boolean(Key.GRPC_SERVICE_NAME_COMPAT)
     var profileSecurityAdvisory by configurationStore.boolean(Key.PROFILE_SECURITY_ADVISORY) { true }
 
@@ -299,8 +308,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var profileTrafficStatistics by configurationStore.boolean(Key.PROFILE_TRAFFIC_STATISTICS) { true }
 
     // protocol
-
-    var shadowsocks2022Implementation by configurationStore.stringToInt(Key.SHADOWSOCKS_2022_IMPLEMENTATION)
     var providerRootCA by configurationStore.stringToInt(Key.PROVIDER_ROOT_CA) { 1 }
     var interruptReusedConnections by configurationStore.boolean(Key.INTERRUPT_REUSED_CONNECTIONS) { true }
 
@@ -369,6 +376,9 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverHopIntervalMin by profileCacheStore.stringToLong(Key.SERVER_HOP_INTERVAL_MIN)
     var serverHopIntervalMax by profileCacheStore.stringToLong(Key.SERVER_HOP_INTERVAL_MAX)
     var serverHysteria2BBRProfile by profileCacheStore.string(Key.SERVER_HYSTERIA2_BBR_PROFILE)
+    var serverHysteria2ObfsType by profileCacheStore.string(Key.SERVER_HYSTERIA2_OBFS_TYPE)
+    var serverHysteria2GeckoMinPacketSize by profileCacheStore.stringToInt(Key.SERVER_HYSTERIA2_GECKO_MIN_PACKET_SIZE)
+    var serverHysteria2GeckoMaxPacketSize by profileCacheStore.stringToInt(Key.SERVER_HYSTERIA2_GECKO_MAX_PACKET_SIZE)
 
     var serverVMessExperimentalAuthenticatedLength by profileCacheStore.boolean(Key.SERVER_VMESS_EXPERIMENTAL_AUTHENTICATED_LENGTH)
     var serverVMessExperimentalNoTerminationSignal by profileCacheStore.boolean(Key.SERVER_VMESS_EXPERIMENTAL_NO_TERMINATION_SIGNAL)
@@ -393,7 +403,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverDisableSNI by profileCacheStore.boolean(Key.SERVER_DISABLE_SNI)
     var serverReduceRTT by profileCacheStore.boolean(Key.SERVER_REDUCE_RTT)
 
-    var serverShadowTLSProtocolVersion by profileCacheStore.stringToInt(Key.SERVER_SHADOWTLS_PROTOCOL_VERSION) { 2 }
     var serverMieruMuxLevel by profileCacheStore.stringToInt(Key.SERVER_MIERU_MUX_LEVEL)
     var serverMieruHandshakeMode by profileCacheStore.stringToInt(Key.SERVER_MIERU_HANDSHAKE_MODE)
     var serverMieruTrafficPattern by profileCacheStore.string(Key.SERVER_MIERU_TRAFFIC_PATTERN)
@@ -419,6 +428,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverAnyTLSIdleSessionTimeout by profileCacheStore.stringToInt(Key.SERVER_ANYTLS_IDLE_SESSION_TIMEOUT) { 30 }
     var serverAnyTLSMinIdleSession by profileCacheStore.stringToInt(Key.SERVER_ANYTLS_MIN_IDLE_SESSION)
     var serverTrustTunnelServerNameToVerify by profileCacheStore.string(Key.SERVER_TRUSTTUNNEL_SERVER_NAME_TO_VERIFY)
+    var serverHysteria2OmitMaxDatagramFrameSize by profileCacheStore.boolean(Key.SERVER_HYSTERIA2_OMIT_MAX_DATAGRAM_FRAME_SIZE)
+    var serverSSHKeepaliveInterval by profileCacheStore.stringToInt(Key.SERVER_SSH_KEEPALIVE_INTERVAL)
 
     var serverVkTurnMode by profileCacheStore.stringToInt(Key.SERVER_VKTURN_MODE)
     var serverVkTurnProvider by profileCacheStore.stringToInt(Key.SERVER_VKTURN_PROVIDER)
@@ -470,8 +481,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var routeAttrs by profileCacheStore.string(Key.ROUTE_ATTRS)
     var routeOutbound by profileCacheStore.stringToInt(Key.ROUTE_OUTBOUND)
     var routeOutboundRule by profileCacheStore.long(Key.ROUTE_OUTBOUND_RULE)
-    var routeReverse by profileCacheStore.boolean(Key.ROUTE_REVERSE)
-    var routeRedirect by profileCacheStore.string(Key.ROUTE_REDIRECT)
     var routePackages by profileCacheStore.string(Key.ROUTE_PACKAGES)
     var routeCustomPackageNameOrUid by profileCacheStore.string(Key.ROUTE_CUSTOM_PACKAGE_NAME_OR_UID)
     var routeNetworkType by profileCacheStore.stringSet(Key.ROUTE_NETWORK_TYPE)
@@ -501,6 +510,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var subscriptionExpiryDate by profileCacheStore.long(Key.SUBSCRIPTION_EXPIRY_DATE)
     var subscriptionNameFilter by profileCacheStore.string(Key.SUBSCRIPTION_NAME_FILTER)
     var subscriptionNameFilter1 by profileCacheStore.string(Key.SUBSCRIPTION_NAME_FILTER1)
+    var subscriptionHTTPHeaders by profileCacheStore.string(Key.SUBSCRIPTION_HTTP_HEADERS)
+    var subscriptionAgePrivateKey by profileCacheStore.string(Key.SUBSCRIPTION_AGE_PRIVATE_KEY)
 
     var editingAssetName by profileCacheStore.string(Key.EDITING_ASSET_NAME)
     var assetName by profileCacheStore.string(Key.ASSET_NAME)
@@ -512,6 +523,10 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     var rulesFirstCreate by configurationStore.boolean(Key.RULES_FIRST_CREATE)
     var doNotShowRuleExportWarning by configurationStore.boolean(Key.DO_NOT_SHOW_RULE_EXPORT_WARNING)
+
+    var getInstalledPackagesInited by configurationStore.boolean("getInstalledPackagesInited")
+    var postNotificationsPermissionRequested by configurationStore.boolean("postNotificationsPermissionRequested")
+    var accessLocalNetworkPermissionRequested by configurationStore.boolean("accessLocalNetworkPermissionRequested")
 
     var experimentalFlagsProperties = Properties().apply {
         load(BufferedReader(StringReader(experimentalFlags)))

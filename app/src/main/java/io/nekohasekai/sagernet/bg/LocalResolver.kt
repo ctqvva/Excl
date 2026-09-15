@@ -23,13 +23,14 @@ import android.net.Network
 import android.os.Build
 import android.os.CancellationSignal
 import androidx.annotation.RequiresApi
+import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.ktx.tryResume
 import io.nekohasekai.sagernet.ktx.tryResumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.runBlocking
-import libsagernetcore.Libsagernetcore
-import libsagernetcore.LocalResolver
+import libexclavecore.Libexclavecore
+import libexclavecore.LocalResolver
 import java.net.InetAddress
 import java.net.UnknownHostException
 import kotlin.coroutines.suspendCoroutine
@@ -37,6 +38,16 @@ import kotlin.coroutines.suspendCoroutine
 interface LocalResolver : LocalResolver {
 
     var underlyingNetwork: Network?
+
+    private val instance: DnsResolver?
+        get() = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN ->
+                DnsResolver(SagerNet.application, null)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
+                @Suppress("DEPRECATION")
+                DnsResolver.getInstance()
+            else -> null
+        }
 
     override fun supportExchange(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -73,7 +84,7 @@ interface LocalResolver : LocalResolver {
                         else -> null
                     }
                     if (type != null) {
-                        DnsResolver.getInstance().query(
+                        instance!!.query(
                             underlyingNetwork,
                             domain,
                             type,
@@ -83,7 +94,7 @@ interface LocalResolver : LocalResolver {
                             callback
                         )
                     } else {
-                        DnsResolver.getInstance().query(
+                        instance!!.query(
                             underlyingNetwork,
                             domain,
                             DnsResolver.FLAG_NO_RETRY,
@@ -104,10 +115,10 @@ interface LocalResolver : LocalResolver {
             val filtered = mutableListOf<String>()
             when {
                 network.endsWith("4") -> for (address in answer) {
-                    address.hostAddress?.takeIf { Libsagernetcore.isIPv4(it) }?.also { filtered.add(it) }
+                    address.hostAddress?.takeIf { Libexclavecore.isIPv4(it) }?.also { filtered.add(it) }
                 }
                 network.endsWith("6") -> for (address in answer) {
-                    address.hostAddress?.takeIf { Libsagernetcore.isIPv6(it) }?.also { filtered.add(it) }
+                    address.hostAddress?.takeIf { Libexclavecore.isIPv6(it) }?.also { filtered.add(it) }
                 }
                 else -> filtered.addAll(answer.mapNotNull { it.hostAddress })
             }
@@ -139,7 +150,7 @@ interface LocalResolver : LocalResolver {
                         continuation.tryResumeWithException(error)
                     }
                 }
-                DnsResolver.getInstance().rawQuery(
+                instance!!.rawQuery(
                     underlyingNetwork,
                     message,
                     DnsResolver.FLAG_NO_RETRY,

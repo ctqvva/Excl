@@ -61,15 +61,12 @@ import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeLi
 import io.nekohasekai.sagernet.databinding.LayoutMainBinding
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.Alerts
-import io.nekohasekai.sagernet.fmt.KryoConverters
 import io.nekohasekai.sagernet.fmt.PluginEntry
 import io.nekohasekai.sagernet.group.GroupInterfaceAdapter
-import io.nekohasekai.sagernet.group.GroupUpdater
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.utils.PackageCache
 import io.noties.markwon.Markwon
-import libsagernetcore.Libsagernetcore
-import kotlin.io.encoding.Base64
+import libexclavecore.Libexclavecore
 
 class MainActivity : ThemedActivity(),
     SagerConnection.Callback,
@@ -167,55 +164,37 @@ class MainActivity : ThemedActivity(),
             onNewIntent(intent)
         }
 
-        if (DataStore.configurationStore.getBoolean(
-                if (Libsagernetcore.buildWithClash()) "gplv3OnlyAccepted"
-                else "gplv3OrLaterAccepted") != true) {
-            runOnMainDispatcher {
+        runOnMainDispatcher {
+            fun getLicenseKeyName(only: Boolean): String {
+                return if (only) "gplv3OnlyAccepted" else "gplv3OrLaterAccepted"
+            }
+            val only = Libexclavecore.buildWithClash()
+            if (DataStore.configurationStore.getBoolean(getLicenseKeyName(only)) != true) {
+                DataStore.configurationStore.putBoolean(getLicenseKeyName(only), true)
+                DataStore.configurationStore.remove(getLicenseKeyName(!only))
                 AlertDialog.Builder(this@MainActivity).apply {
                     setTitle(R.string.license)
                     setView(
                         TextView(this@MainActivity).apply {
                             setPadding(dp2px(16))
-                            text = getString(
-                                if (Libsagernetcore.buildWithClash()) {
-                                    R.string.license_gpl_v3_only
-                                } else {
-                                    R.string.license_gpl_v3_or_later
-                                }
-                            )
+                            text = getString(if (only) {
+                                R.string.license_gpl_v3_only
+                            } else {
+                                R.string.license_gpl_v3_or_later
+                            })
                             setTextIsSelectable(true)
                             Linkify.addLinks(this, Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS)
                         }
                     )
                     setPositiveButton(android.R.string.ok) { _, _ ->
-                        DataStore.configurationStore.putBoolean(
-                            if (Libsagernetcore.buildWithClash()) "gplv3OnlyAccepted"
-                            else "gplv3OrLaterAccepted", true)
-                        if (DataStore.configurationStore.getBoolean("permissionRequested") != true) {
-                            DataStore.configurationStore.putBoolean("permissionRequested", true)
-                            PackageCache.awaitLoadSync()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                if (app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-                                }
-                            }
-                        }
+                        requestPermissions()
                     }
                     setOnCancelListener { _ ->
-                        DataStore.configurationStore.putBoolean(
-                            if (Libsagernetcore.buildWithClash()) "gplv3OnlyAccepted"
-                            else "gplv3OrLaterAccepted", true)
-                        if (DataStore.configurationStore.getBoolean("permissionRequested") != true) {
-                            DataStore.configurationStore.putBoolean("permissionRequested", true)
-                            PackageCache.awaitLoadSync()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                if (app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-                                }
-                            }
-                        }
+                        requestPermissions()
                     }
                 }.show()
+            } else {
+                requestPermissions()
             }
         }
     }
@@ -226,11 +205,43 @@ class MainActivity : ThemedActivity(),
         val uri = intent.data ?: return
 
         runOnDefaultDispatcher {
-            if ((uri.scheme?.lowercase() == "exclave" || uri.scheme?.lowercase() == "sn") && uri.host == "subscription") {
-                importSubscription(uri)
+            if (uri.scheme == "exclave" && uri.host == "subscription") {
+                uri.getQueryParameter("url")?.let {
+                    importSubscription(it)
+                }
             } else {
                 importProfile(uri)
             }
+        }
+    }
+
+    private fun requestPermissions() {
+        if (!DataStore.getInstalledPackagesInited) {
+            // For bullshit Chinese OEMs
+            DataStore.getInstalledPackagesInited = true
+            runOnDefaultDispatcher {
+                PackageCache.register()
+            }
+        }
+        val permissions = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!DataStore.postNotificationsPermissionRequested) {
+                DataStore.postNotificationsPermissionRequested = true
+                if (app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            if (!DataStore.accessLocalNetworkPermissionRequested) {
+                DataStore.accessLocalNetworkPermissionRequested = true
+                if (app.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                    permissions.add(Manifest.permission.ACCESS_LOCAL_NETWORK)
+                }
+            }
+        }
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this@MainActivity, permissions.toTypedArray(), 0)
         }
     }
 
@@ -241,59 +252,20 @@ class MainActivity : ThemedActivity(),
         return connection.service!!.urlTest()
     }
 
-    suspend fun importSubscription(uri: Uri) {
-        val group: ProxyGroup
-
-        val url = uri.getQueryParameter("url")
-        if (!url.isNullOrBlank()) {
-            group = ProxyGroup(type = GroupType.SUBSCRIPTION)
-            val subscription = SubscriptionBean()
-            group.subscription = subscription
-
-            // human-readable cleartext format
-            subscription.link = url
-            group.name = uri.getQueryParameter("name")
-
-            val type = uri.getQueryParameter("type")
-            when (type?.lowercase()) {
-                "sip008" -> {
-                    subscription.type = SubscriptionType.SIP008
-                }
-            }
-
-        } else {
-            // private binary format derived from SagerNet
-            if (uri.scheme?.lowercase() != "exclave") {
-                // do not be compatible with the private binary format from other software
-                return
-            }
-            val data = uri.encodedQuery.takeIf { !it.isNullOrBlank() } ?: return
-            try {
-                group = KryoConverters.deserialize(
-                    ProxyGroup().apply { export = true }, Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).decode(data).zlibDecompress()
-                ).apply {
-                    export = false
-                }
-            } catch (e: Exception) {
-                onMainDispatcher {
-                    alert(e.readableMessage).show()
-                }
-                return
+    suspend fun importSubscription(uri: String) {
+        val group = ProxyGroup(type = GroupType.SUBSCRIPTION).apply {
+            subscription = SubscriptionBean().apply {
+                link = uri
+                name = getString(R.string.subscription)
             }
         }
-
-        val name = group.name.takeIf { !it.isNullOrEmpty() } ?: group.subscription?.link
-        if (name.isNullOrEmpty()) return
-
-        group.name = group.name.takeIf { !it.isNullOrEmpty() }
-            ?: getString(R.string.subscription)
 
         onMainDispatcher {
 
             displayFragmentWithId(R.id.nav_group)
 
             MaterialAlertDialogBuilder(this@MainActivity).setTitle(R.string.subscription_import)
-                .setMessage(getString(R.string.subscription_import_message, name))
+                .setMessage(getString(R.string.subscription_import_message, uri))
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     runOnDefaultDispatcher {
                         finishImportSubscription(group)

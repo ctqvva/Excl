@@ -57,6 +57,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
     lateinit var layoutManager: LinearLayoutManager
     lateinit var groupAdapter: GroupAdapter
     lateinit var undoManager: UndoSnackbarManager<ProxyGroup>
+    val showBackup = DataStore.experimentalFlagsProperties.getBooleanProperty("enableProfileBackup")
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -395,12 +396,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 QRCodeDialog(link).showAllowingStateLoss(parentFragmentManager)
             }
 
-            fun export(link: String) {
-                val success = SagerNet.trySetPrimaryClip(link)
-                (requireActivity() as ThemedActivity).snackbar(if (success) R.string.action_export_msg else R.string.action_export_err)
-                    .show()
-            }
-
             when (item.itemId) {
                 R.id.action_subscription_link_qr -> {
                     showCode(proxyGroup.subscription!!.link!!)
@@ -433,9 +428,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 R.id.action_file -> {
                     startFilesForResult(exportProfiles, "profiles_${proxyGroup.displayName()}.txt")
                 }
-                R.id.action_export_backup_clipboard -> {
-                    export(proxyGroup.exportBackup())
-                }
                 R.id.action_export_backup_of_all_profiles_clipboard -> {
                     runOnDefaultDispatcher {
                         val profiles = SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
@@ -451,18 +443,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     }
                 }
                 R.id.action_export_backup_of_all_profiles_file -> {
-                    runOnDefaultDispatcher {
-                        val profiles = SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
-                        val links = profiles.map {
-                            if (it.canExportBackup()) {
-                                it.requireBean().exportBackup()
-                            }
-                        }.joinToString("\n")
-                        onMainDispatcher {
-                            SagerNet.trySetPrimaryClip(links)
-                            snackbar(R.string.action_export_msg).show()
-                        }
-                    }
                     startFilesForResult(exportBackupOfAllProfiles, "profiles_${proxyGroup.displayName()}_backup.txt")
                 }
                 R.id.action_clear -> {
@@ -510,6 +490,10 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 if (group.type != GroupType.SUBSCRIPTION) {
                     popup.menu.findItem(R.id.action_share).subMenu?.removeItem(R.id.action_export_backup)
                     popup.menu.findItem(R.id.action_share).subMenu?.removeItem(R.id.action_subscription_link)
+                }
+
+                if (showBackup) {
+                    popup.menu.findItem(R.id.action_export_backup_of_all_profiles).isVisible = true
                 }
 
                 popup.setOnMenuItemClickListener(this)

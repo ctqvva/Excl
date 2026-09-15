@@ -19,9 +19,13 @@
 
 package io.nekohasekai.sagernet.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
@@ -165,6 +169,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 "id" -> getString(R.string.language_id_display_name)
                 "it" -> getString(R.string.language_it_display_name)
                 "ja" -> getString(R.string.language_ja_display_name)
+                "ko" -> getString(R.string.language_ko_display_name)
                 "nb-NO" -> getString(R.string.language_nb_NO_display_name)
                 "ru" -> getString(R.string.language_ru_display_name)
                 "tr" -> getString(R.string.language_tr_display_name)
@@ -236,6 +241,23 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         }
         tunImplementation.isEnabled = serviceMode.value == MODE_VPN
         tunImplementation.setOnPreferenceChangeListener { _, newValue ->
+            if ((newValue as String).toInt() == TunImplementation.SYSTEM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN && app.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                MaterialAlertDialogBuilder(requireContext()).apply {
+                    setTitle(R.string.error_title)
+                    setMessage(R.string.nearby_devices_permission_notice)
+                    setNeutralButton(R.string.open_settings) { _, _ ->
+                        try {
+                            startActivity(Intent().apply {
+                                action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                data = Uri.fromParts("package", app.packageName, null)
+                            })
+                        } catch (e: Exception) {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
+                    setPositiveButton(android.R.string.ok, null)
+                }.show()
+            }
             enablePcap.isEnabled = serviceMode.value == MODE_VPN && (newValue as String).toInt() == TunImplementation.GVISOR
             if (SagerNet.started) {
                 SagerNet.stopService()
@@ -536,14 +558,33 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             allowAccess.isEnabled = !forceLoopback
         }
         updateAllowAccessState(privacyForceLoopbackBind.isChecked)
-        allowAccess.onPreferenceChangeListener = reloadListener
         privacyForceLoopbackBind.setOnPreferenceChangeListener { _, newValue ->
             updateAllowAccessState(newValue as Boolean)
             needReload()
             true
         }
-
-        allowAccess.onPreferenceChangeListener = reloadListener
+        allowAccess.setOnPreferenceChangeListener { _, newValue ->
+            newValue as Boolean
+            if (newValue && Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN && app.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                MaterialAlertDialogBuilder(requireContext()).apply {
+                    setTitle(R.string.error_title)
+                    setMessage(R.string.nearby_devices_permission_notice)
+                    setNeutralButton(R.string.open_settings) { _, _ ->
+                        try {
+                            startActivity(Intent().apply {
+                                action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                data = Uri.fromParts("package", app.packageName, null)
+                            })
+                        } catch (e: Exception) {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
+                    setPositiveButton(android.R.string.ok, null)
+                }.show()
+            }
+            needReload()
+            true
+        }
         val requireSocks = findPreference<SwitchPreference>(Key.REQUIRE_SOCKS)!!
         val requireTransproxy = findPreference<SwitchPreference>(Key.REQUIRE_TRANSPROXY)!!
         val requireDns = findPreference<SwitchPreference>(Key.REQUIRE_DNS_INBOUND)!!

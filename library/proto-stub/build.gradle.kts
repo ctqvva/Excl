@@ -13,7 +13,7 @@ dependencies {
     api(libs.protobuf.java)
 }
 android {
-    namespace = "com.v2ray.core"
+    namespace = "com.github.exclavenetwork.exclave.core"
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -23,7 +23,7 @@ android {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.34.1"
+        artifact = "com.google.protobuf:protoc:4.35.1"
     }
     generateProtoTasks {
         all().forEach {

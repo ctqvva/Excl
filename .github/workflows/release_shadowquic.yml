@@ -31,8 +31,8 @@ jobs:
           ndk-version: r29
       - name: Setup Rust
         run: |
-          rustup toolchain install 1.94.1
-          rustup override set 1.94.1
+          rustup toolchain install 1.96.0
+          rustup override set 1.96.0
           rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
       - name: Native Build
         env:
@@ -63,6 +63,8 @@ jobs:
     needs: build
     env:
       GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6

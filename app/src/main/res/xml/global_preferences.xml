@@ -319,19 +319,16 @@
             app:key="connectionTestURL"
             app:title="@string/connection_test_url"
             app:useSimpleSummaryProvider="true" />
-        <io.nekohasekai.sagernet.widget.SimpleMenuPreference
-            android:icon="@drawable/baseline_flight_takeoff_24"
-            app:defaultValue="0"
-            app:entries="@array/shadowsocks_2022_implementation"
-            app:entryValues="@array/shadowsocks_2022_implementation_value"
-            app:key="shadowsocks2022Implementation"
-            app:title="@string/shadowsocks_2022_implementation"
-            app:useSimpleSummaryProvider="true" />
         <SwitchPreference
             app:icon="@drawable/baseline_construction_24"
             app:key="realityDisableX25519Mlkem768"
             app:summary="@string/reality_breaking_change_summary"
             app:title="@string/reality_disable_x25519mlkem768" />
+        <SwitchPreference
+            app:icon="@drawable/baseline_construction_24"
+            app:key="hysteria2OmitMaxDatagramFrameSize"
+            app:summary="@string/hysteria2_omit_max_datagram_frame_size_sum"
+            app:title="@string/enable_hysteria2_omit_max_datagram_frame_size" />
         <SwitchPreference
             app:icon="@drawable/ic_baseline_format_align_left_24"
             app:key="grpcServiceNameCompat"
@@ -394,7 +391,6 @@
             app:key="useLocalDnsAsDirectDns"
             app:title="@string/use_local_dns_as_direct_dns" />
         <io.nekohasekai.sagernet.widget.NonBlackEditTextPreference
-            app:defaultValue="tcp://223.5.5.5"
             app:icon="@drawable/ic_action_dns"
             app:key="directDns"
             app:title="@string/direct_dns"

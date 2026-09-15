@@ -27,18 +27,23 @@ chmod -R u+w "$awg_tmp"
 find "$awg_tmp" -type f \( -name '*.go' -o -name 'go.mod' \) -print0 \
   | xargs -0 perl -0pi -e 's#github.com/amnezia-vpn/amneziawg-go#golang.zx2c4.com/wireguard#g'
 
-v2ray_src="$(go list -m -f '{{.Dir}}' github.com/v2fly/v2ray-core/v5)"
+v2ray_src="$(go list -m -f '{{.Dir}}' github.com/exclavenetwork/exclave-core/v5)"
 v2ray_tmp="$workdir/v2ray-core"
 cp -R "$v2ray_src"/. "$v2ray_tmp"
 chmod -R u+w "$v2ray_tmp"
 patch -p1 -d "$v2ray_tmp" < patches/v2ray-amneziawg.patch
 
 go mod edit -replace=golang.zx2c4.com/wireguard="$awg_tmp"
-go mod edit -replace=github.com/v2fly/v2ray-core/v5="$v2ray_tmp"
+go mod edit -replace=github.com/exclavenetwork/exclave-core/v5="$v2ray_tmp"
+go mod tidy
 
-CGO_LDFLAGS="-Wl,-z,max-page-size=16384" gomobile bind -v -androidapi 21 -tags="with_clash" "github.com/dyhkwong/libsagernetcore" || exit 1
+# gomobile suppresses module-enumeration errors and later emits an empty go.mod.
+# Validate the exact Android module graph here so the real failure is visible.
+GOOS=android GOARCH=arm64 go list -m -tags=with_clash,android all >/dev/null
+
+CGO_LDFLAGS="-Wl,-z,max-page-size=16384" gomobile bind -v -androidapi 21 -tags="with_clash" "github.com/exclavenetwork/libexclavecore" || exit 1
 
 proj=../../app/libs
-if [ -d $proj ]; then
-  cp -vf libsagernetcore.aar $proj
+if [ -d "$proj" ]; then
+  cp -vf libexclavecore.aar "$proj"
 fi

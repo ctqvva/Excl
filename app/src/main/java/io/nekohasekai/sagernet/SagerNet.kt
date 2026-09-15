@@ -61,8 +61,8 @@ import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.utils.Theme
 import kotlinx.coroutines.DEBUG_PROPERTY_NAME
 import kotlinx.coroutines.DEBUG_PROPERTY_VALUE_ON
-import libsagernetcore.Libsagernetcore
-import libsagernetcore.UidDumper
+import libexclavecore.Libexclavecore
+import libexclavecore.UidDumper
 import java.net.Inet6Address
 import java.net.InetSocketAddress
 import androidx.work.Configuration as WorkConfiguration
@@ -88,6 +88,12 @@ class SagerNet : Application(),
         updateNotificationChannels()
         Seq.setContext(this)
 
+        if (DataStore.getInstalledPackagesInited) {
+            runOnDefaultDispatcher {
+                PackageCache.register()
+            }
+        }
+
         val processName = if (Build.VERSION.SDK_INT >= 28) {
             getProcessName()
         } else {
@@ -102,7 +108,7 @@ class SagerNet : Application(),
         val isMainProcess = processName == BuildConfig.APPLICATION_ID
 
         if (!isMainProcess) {
-            Libsagernetcore.setUidDumper(this, Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
+            Libexclavecore.setUidDumper(this, Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
             if (
                 DataStore.enableDebug &&
                 DataStore.pprofServer.isNotEmpty() &&
@@ -118,16 +124,16 @@ class SagerNet : Application(),
             }
         }
 
-        Libsagernetcore.setenv("v2ray.conf.geoloader", "memconservative")
+        Libexclavecore.setenv("exclave.conf.geoloader", "memconservative")
         externalAssets.mkdirs()
-        Libsagernetcore.initializeV2Ray(
+        Libexclavecore.initializeV2Ray(
             filesDir.absolutePath + "/",
             externalAssets.absolutePath + "/",
-            "v2ray/",
+            "exclave-core/",
         )
 
         try {
-            Libsagernetcore.updateSystemRoots(DataStore.providerRootCA)
+            Libexclavecore.updateSystemRoots(DataStore.providerRootCA)
         } catch (e: Exception) {
             Toast.makeText(this, e.readableMessage, Toast.LENGTH_LONG).show()
         }
@@ -282,7 +288,7 @@ class SagerNet : Application(),
                 // capabilities.hasTransport(NetworkCapabilities.TRANSPORT_THREAD) -> "thread"
                 else -> ""
             }
-            Libsagernetcore.setNetworkType(networkType)
+            Libexclavecore.setNetworkType(networkType)
 
             var ssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 DefaultNetworkListener.ssid ?: ""
@@ -294,13 +300,13 @@ class SagerNet : Application(),
             if (ssid.length >= 2 && ssid.first() == '\"' && ssid.last() == '\"') {
                 ssid = ssid.substring(1, ssid.length - 1)
             }
-            Libsagernetcore.setSSID(ssid)
+            Libexclavecore.setSSID(ssid)
 
             val linkAddresses = linkProperties.linkAddresses.toSet()
             if (DataStore.logLevel == LogLevel.DEBUG && currentLinkAddresses != linkAddresses) {
                 Log.d("Excl", "updated link addresses: " + linkAddresses.joinToString(" ", "[", "]") { it.address.hostAddress!! + "/" + it.prefixLength })
             }
-            Libsagernetcore.setDiscardIPv6(!linkAddresses.any { it.address is Inet6Address && !it.address.isLinkLocalAddress })
+            Libexclavecore.setDiscardIPv6(!linkAddresses.any { it.address is Inet6Address && !it.address.isLinkLocalAddress })
 
             if (DataStore.interruptReusedConnections) {
                 val networkChanged = currentNetwork != null && currentNetwork != network
@@ -309,7 +315,7 @@ class SagerNet : Application(),
                     if (DataStore.logLevel == LogLevel.DEBUG) {
                         Log.d("Excl", "network changed, interrupt reused connections")
                     }
-                    Libsagernetcore.interfaceUpdate()
+                    Libexclavecore.interfaceUpdate()
                 }
             }
 

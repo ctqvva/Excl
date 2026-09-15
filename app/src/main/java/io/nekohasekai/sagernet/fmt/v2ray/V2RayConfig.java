@@ -333,7 +333,6 @@ public class V2RayConfig {
         public String address;
         public Integer port;
         public String network;
-        public Integer timeout;
         public Boolean followRedirect;
         public Integer userLevel;
 
@@ -341,7 +340,6 @@ public class V2RayConfig {
 
     public static class HTTPInboundConfigurationObject implements InboundConfigurationObject {
 
-        public Integer timeout;
         public List<AccountObject> accounts;
         public Boolean allowTransparent;
         public Integer userLevel;
@@ -362,9 +360,7 @@ public class V2RayConfig {
         public List<AccountObject> accounts;
         public Boolean udp;
         public String ip;
-        public Integer timeout;
         public Integer userLevel;
-        public String packetEncoding;
         public Boolean deferLastReply;
 
         public static class AccountObject {
@@ -442,7 +438,6 @@ public class V2RayConfig {
         public String email;
         public String method;
         public String password;
-        public Boolean udp;
         public Integer level;
         public String network;
         public Boolean ivCheck;
@@ -450,7 +445,6 @@ public class V2RayConfig {
         public String pluginOpts;
         public List<String> pluginArgs;
         public String pluginWorkingDir;
-        public String packetEncoding;
         public List<UserObject> clients;
         public List<UserObject> users;
 
@@ -471,7 +465,6 @@ public class V2RayConfig {
 
         public List<ClientObject> clients;
         public List<FallbackObject> fallbacks;
-        public String packetEncoding;
 
         public static class ClientObject {
 
@@ -500,10 +493,8 @@ public class V2RayConfig {
         public List<AccountObject> accounts;
         public Boolean udp;
         public String ip;
-        public Integer timeout;
         public Integer userLevel;
         public Boolean allowTransparent;
-        public String packetEncoding;
         public Boolean deferLastReply;
 
         public static class AccountObject {
@@ -584,7 +575,6 @@ public class V2RayConfig {
     }
 
     public static class Hysteria2InboundConfigurationObject implements InboundConfigurationObject {
-        public String packetEncoding;
     }
 
     public static class AnyTLSInboundConfigurationObject implements InboundConfigurationObject {
@@ -689,19 +679,15 @@ public class V2RayConfig {
                 case "wireguard":
                     return WireGuardOutboundConfigurationObject.class;
                 case "ssh":
-                    return SSHOutbountConfigurationObject.class;
+                    return SSHOutboundConfigurationObject.class;
                 case "shadowsocks-2022":
                     return Shadowsocks2022OutboundConfigurationObject.class;
-                case "shadowsocks2022":
-                    return Shadowsocks_2022OutboundConfigurationObject.class;
                 case "hysteria2":
                     return Hysteria2OutboundConfigurationObject.class;
                 case "tuic":
                     return TUICOutboundConfigurationObject.class;
                 case "http3":
                     return HTTP3OutboundConfigurationObject.class;
-                case "shadowtls":
-                    return ShadowTLSOutboundConfigurationObject.class;
                 case "anytls":
                     return AnyTLSOutboundConfigurationObject.class;
                 case "juicity":
@@ -744,7 +730,6 @@ public class V2RayConfig {
     public static class FreedomOutboundConfigurationObject implements OutboundConfigurationObject {
 
         public String domainStrategy;
-        public String timeout;
         public String redirect;
         public Integer userLevel;
         // SagerNet private
@@ -866,21 +851,6 @@ public class V2RayConfig {
 
     }
 
-    public static class Shadowsocks_2022OutboundConfigurationObject implements OutboundConfigurationObject {
-
-        public String address;
-        public Integer port;
-        public String method;
-        public String psk;
-        public List<String> ipsk;
-        public String plugin;
-        public String pluginOpts;
-        public List<String> pluginArgs;
-        public String pluginWorkingDir;
-        public Boolean uot;
-
-    }
-
     public static class VLESSOutboundConfigurationObject implements OutboundConfigurationObject {
 
         public List<ServerObject> vnext;
@@ -949,7 +919,7 @@ public class V2RayConfig {
 
     }
 
-    public static class SSHOutbountConfigurationObject implements OutboundConfigurationObject {
+    public static class SSHOutboundConfigurationObject implements OutboundConfigurationObject {
 
         public String address;
         public Integer port;
@@ -961,6 +931,7 @@ public class V2RayConfig {
         public Integer userLevel;
         public String clientVersion;
         public List<String> hostKeyAlgorithms;
+        public Integer keepaliveInterval;
 
     }
 
@@ -993,18 +964,6 @@ public class V2RayConfig {
         public Boolean udpOverStream;
 
     }
-
-
-    public static class ShadowTLSOutboundConfigurationObject implements OutboundConfigurationObject {
-
-        public String address;
-        public Integer port;
-        public String password;
-        public Integer version;
-        public Integer idleSessionTimeout;
-
-    }
-
 
     public static class AnyTLSOutboundConfigurationObject implements OutboundConfigurationObject {
 
@@ -1050,21 +1009,6 @@ public class V2RayConfig {
         public Boolean http3;
         public String serverNameToVerify;
         public String domainStrategy;
-
-    }
-
-    public TransportObject transport;
-
-    public static class TransportObject {
-
-        public TcpObject tcpSettings;
-        public KcpObject kcpSettings;
-        public WebSocketObject wsSettings;
-        public HttpObject httpSettings;
-        public QuicObject quicSettings;
-        public DomainSocketObject dsSettings;
-        public GrpcObject grpcSettings;
-        public GrpcObject gunSettings;
 
     }
 
@@ -1296,6 +1240,7 @@ public class V2RayConfig {
         public Integer health_check_timeout;
         public Boolean permit_without_stream;
         public Integer initial_windows_size;
+        public Boolean parseXForwardedFor;
         public Boolean multiMode;
         public Boolean serviceNameCompat;
 
@@ -1337,6 +1282,7 @@ public class V2RayConfig {
         public Long hopInterval;
         public Long hopIntervalMin;
         public Long hopIntervalMax;
+        public Boolean omitMaxDatagramFrameSize;
 
         public static class CongestionObject {
             public String type;
@@ -1348,6 +1294,8 @@ public class V2RayConfig {
         public static class OBFSObject {
             public String type;
             public String password;
+            public Integer minPacketSize;
+            public Integer maxPacketSize;
         }
 
     }
@@ -1368,8 +1316,10 @@ public class V2RayConfig {
         public String xPaddingPlacement;
         public String xPaddingMethod;
         public String uplinkHTTPMethod;
-        public String sessionPlacement;
-        public String sessionKey;
+        public String sessionIDPlacement;
+        public String sessionIDKey;
+        public String sessionIDTable;
+        public String sessionIDLength;
         public String seqPlacement;
         public String seqKey;
         public String uplinkDataPlacement;
@@ -1445,23 +1395,6 @@ public class V2RayConfig {
         public String listenAddr;
         public Integer listenPort;
 
-    }
-
-    public ReverseObject reverse;
-
-    public static class ReverseObject {
-        public List<BridgeObject> bridges;
-        public List<PortalObject> portals;
-
-        public static class BridgeObject {
-            public String tag;
-            public String domain;
-        }
-
-        public static class PortalObject {
-            public String tag;
-            public String domain;
-        }
     }
 
     public ObservatoryObject observatory;

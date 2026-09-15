@@ -26,6 +26,14 @@
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:minSdkVersion="36" />
+    <uses-permission
+        android:name="android.permission.ACCESS_LOCAL_NETWORK"
+        android:minSdkVersion="37" />
+    <!-- INTERACT_ACROSS_USERS needs to be granted via ADB -->
+    <uses-permission
+        android:name="android.permission.INTERACT_ACROSS_USERS"
+        android:minSdkVersion="37"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -105,25 +113,12 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
 
-            <intent-filter android:label="@string/subscription_import">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="exclave" />
-                <data android:scheme="sn" />
-                <data android:host="subscription" />
-
-            </intent-filter>
-
             <intent-filter android:label="@string/profile_import">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="exclave" />
                 <!--data android:scheme="http" /-->
                 <!--data android:scheme="https" /-->
                 <data android:scheme="ss" />
@@ -134,7 +129,6 @@
                 <data android:scheme="socks4a" />
                 <data android:scheme="sock5" />
                 <data android:scheme="sock5h" />
-                <data android:scheme="socks+tls" />
                 <data android:scheme="vmess" />
                 <data android:scheme="vless" />
                 <data android:scheme="trojan" />
@@ -150,6 +144,8 @@
                 <data android:scheme="quic" />
                 <data android:scheme="anytls" />
                 <data android:scheme="tt" />
+                <data android:scheme="sq" />
+                <data android:scheme="shadowquic" />
             </intent-filter>
 
             <meta-data
@@ -228,8 +224,6 @@
             android:name="io.nekohasekai.sagernet.ui.profile.MieruSettingsActivity" />
         <activity
             android:name="io.nekohasekai.sagernet.ui.profile.Tuic5SettingsActivity" />
-        <activity
-            android:name="io.nekohasekai.sagernet.ui.profile.ShadowTLSSettingsActivity" />
         <activity
             android:name="io.nekohasekai.sagernet.ui.profile.JuicitySettingsActivity" />
         <activity
