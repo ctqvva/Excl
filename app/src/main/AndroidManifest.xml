@@ -303,6 +303,14 @@
             android:launchMode="singleTask"
             android:taskAffinity="io.nekohasekai.sagernet.ui.ProbeCertActivity"
             android:parentActivityName="io.nekohasekai.sagernet.ui.MainActivity" />
+        <activity
+            android:name="io.nekohasekai.sagernet.ui.byedpi.ByeDpiCommandEditorActivity"
+            android:taskAffinity="io.nekohasekai.sagernet.ui.byedpi.ByeDpiCommandEditorActivity"
+            android:parentActivityName="io.nekohasekai.sagernet.ui.MainActivity" />
+        <activity
+            android:name="io.nekohasekai.sagernet.ui.byedpi.ByeDpiProxyTestActivity"
+            android:taskAffinity="io.nekohasekai.sagernet.ui.byedpi.ByeDpiProxyTestActivity"
+            android:parentActivityName="io.nekohasekai.sagernet.ui.MainActivity" />
 
         <activity
             android:name="io.nekohasekai.sagernet.ui.SwitchActivity"

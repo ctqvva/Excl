@@ -320,6 +320,9 @@ object Key {
     const val SERVER_BYEBYEDPI_DROP_SACK = "serverByeByeDPIDropSack"
     const val SERVER_BYEBYEDPI_FAKE_OFFSET = "serverByeByeDPIFakeOffset"
 
+    const val BYEBYEDPI_TOOL_CMD = "byeByeDPIToolCmd"
+    const val BYEBYEDPI_TOOL_HISTORY = "byeByeDPIToolHistory"
+
     const val SERVER_PORTS = "serverPorts"
     const val SERVER_HOP_INTERVAL = "serverHopInterval"
     const val SERVER_HOP_INTERVAL_MIN = "serverHopIntervalMin"

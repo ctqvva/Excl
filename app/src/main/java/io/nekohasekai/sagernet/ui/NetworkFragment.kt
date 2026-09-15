@@ -27,6 +27,8 @@ import androidx.core.view.updatePadding
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.databinding.LayoutNetworkBinding
 import io.nekohasekai.sagernet.ktx.*
+import io.nekohasekai.sagernet.ui.byedpi.ByeDpiCommandEditorActivity
+import io.nekohasekai.sagernet.ui.byedpi.ByeDpiProxyTestActivity
 
 class NetworkFragment : NamedFragment(R.layout.layout_network) {
 
@@ -51,6 +53,12 @@ class NetworkFragment : NamedFragment(R.layout.layout_network) {
         }
         binding.probeCertificate.setOnClickListener {
             startActivity(Intent(requireContext(), ProbeCertActivity::class.java))
+        }
+        binding.byeDpiCommandEditor.setOnClickListener {
+            startActivity(Intent(requireContext(), ByeDpiCommandEditorActivity::class.java))
+        }
+        binding.byeDpiProxyTest.setOnClickListener {
+            startActivity(Intent(requireContext(), ByeDpiProxyTestActivity::class.java))
         }
 
     }

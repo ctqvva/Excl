@@ -240,6 +240,11 @@
     <string name="action_amneziawg" translatable="false">AmneziaWG 2.0</string>
     <string name="action_vk_turn" translatable="false">VK TURN</string>
     <string name="action_byebyedpi" translatable="false">ByeByeDPI</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_stop">Stop</string>
     <string name="action_mieru" translatable="false">mieru</string>
     <string name="action_tuic5" translatable="false">TUIC</string>
     <string name="action_http3" translatable="false">HTTP/3</string>
@@ -315,6 +320,18 @@
     <string name="byebyedpi_tlsrec_enabled">Split TLS record</string>
     <string name="byebyedpi_tlsrec_position">TLS record split position</string>
     <string name="byebyedpi_tlsrec_at_sni">Split TLS record at SNI</string>
+    <string name="byebyedpi_tools">ByeByeDPI tools</string>
+    <string name="byebyedpi_command_editor">Command line editor</string>
+    <string name="byebyedpi_command_editor_sum">Edit, pin and reuse desync command lines</string>
+    <string name="byebyedpi_command_history">Command history</string>
+    <string name="byebyedpi_applied">Applied</string>
+    <string name="byebyedpi_proxy_test">Proxy test</string>
+    <string name="byebyedpi_proxy_test_sum">Score prepared strategies against test domains</string>
+    <string name="byebyedpi_test_running">Testing strategy %1$d/%2$d</string>
+    <string name="byebyedpi_test_complete">Test completed</string>
+    <string name="byebyedpi_test_stopped">Test stopped</string>
+    <string name="byebyedpi_test_no_domains">No active test domains</string>
+    <string name="byebyedpi_show_details">Show details</string>
     <string name="balancer_alive_members">Alive members: %1$d/%2$d</string>
     <string name="balancer_alive_members_short">%1$d/%2$d alive</string>
     <string name="balancer_runtime_status_waiting">No active member yet</string>

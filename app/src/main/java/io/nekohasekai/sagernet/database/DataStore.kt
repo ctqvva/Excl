@@ -492,6 +492,10 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var serverByeByeDPIDropSack by profileCacheStore.boolean(Key.SERVER_BYEBYEDPI_DROP_SACK)
     var serverByeByeDPIFakeOffset by profileCacheStore.stringToInt(Key.SERVER_BYEBYEDPI_FAKE_OFFSET)
 
+    // ByeByeDPI Tools workbench state (global, not per-profile).
+    var byedpiToolCmd by configurationStore.string(Key.BYEBYEDPI_TOOL_CMD)
+    var byedpiToolHistory by configurationStore.string(Key.BYEBYEDPI_TOOL_HISTORY)
+
     var serverNaiveNoPostQuantum by profileCacheStore.boolean(Key.SERVER_NAIVE_NO_POST_QUANTUM)
     var serverSingUot by profileCacheStore.boolean(Key.SERVER_SING_UOT)
     var serverSingMux by profileCacheStore.boolean(Key.SERVER_SING_MUX)

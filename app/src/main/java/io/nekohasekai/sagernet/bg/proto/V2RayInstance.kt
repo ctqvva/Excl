@@ -35,6 +35,7 @@ import io.nekohasekai.sagernet.fmt.LOCALHOST
 import io.nekohasekai.sagernet.fmt.V2rayBuildResult
 import io.nekohasekai.sagernet.fmt.buildV2RayConfig
 import io.nekohasekai.sagernet.fmt.byebyedpi.ByeByeDPIBean
+import io.nekohasekai.sagernet.fmt.byebyedpi.ByeDpiDomainLists
 import io.nekohasekai.sagernet.fmt.byebyedpi.buildByeDpiArgs
 import io.nekohasekai.sagernet.core.ByeDpiProxy
 import io.nekohasekai.sagernet.fmt.naive.NaiveBean
@@ -98,7 +99,10 @@ abstract class V2RayInstance(
                         // was allocated in ConfigBuilder for this profile.
                         val proxy = ByeDpiProxy()
                         byeDpiProxy = proxy
-                        val args = buildByeDpiArgs(bean, port)
+                        val context = SagerNet.application
+                        val args = buildByeDpiArgs(bean, port) { name ->
+                            ByeDpiDomainLists.resolve(context, name)
+                        }
                         byeDpiJob = GlobalScope.launch(Dispatchers.IO) {
                             proxy.startProxy(args)
                         }
