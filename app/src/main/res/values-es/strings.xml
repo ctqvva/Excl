@@ -69,7 +69,7 @@
     <string name="group_name">Nombre del grupo</string>
     <string name="group_create">Crear grupo</string>
     <string name="group_edit">Editar grupo</string>
-    <string name="raw">Crudo</string>
+    <string name="raw">Sin formato</string>
     <string name="deduplication_sum">Elimina configuraciones duplicadas al actualizar</string>
     <string name="clipboard_empty">El portapapeles está vacío</string>
     <string name="connect">Conectar</string>
@@ -120,8 +120,8 @@
     <string name="remote_dns">DNS remoto</string>
     <string name="cag_dns">Ajustes de DNS</string>
     <string name="connection_test_error">Error: %s</string>
-    <string name="connection_test_available_http">Éxito: El protocolo de enlace HTTP tardó %d ms</string>
-    <string name="connection_test_available">Éxito: El protocolo de enlace HTTPS tardó %d ms</string>
+    <string name="connection_test_available_http">Éxito: La negociación HTTP tardó %d ms</string>
+    <string name="connection_test_available">Éxito: La negociación HTTPS tardó %d ms</string>
     <string name="connection_test_testing">Probando…</string>
     <string name="allow_insecure_sum">Activar esta opción sin desplegar otras medidas de seguridad conduce al éxito de los ataques man-in-the-middle. NO la actives a menos que sepas lo que estás haciendo.</string>
     <string name="allow_insecure">Omitir verificación del certificado</string>
@@ -245,7 +245,7 @@
     <string name="wireguard_local_address">Dirección local</string>
     <string name="wireguard_public_key">Clave pública del par</string>
     <string name="wireguard_psk">Clave precompartida del par</string>
-    <string name="copy_success">¡Copiado exitosamente!</string>
+    <string name="copy_success">¡Copiado correcto!</string>
     <string name="traffic_holder">Activa la VPN para registrar estadísticas de tráfico</string>
     <plurals name="udp_connections">
         <item quantity="one">%d conexión UDP</item>
@@ -396,11 +396,11 @@
     <string name="tuic_udp_relay_mode">Modo de retransmisión UDP</string>
     <string name="congestion_control">Control de congestión</string>
     <string name="tuic_disable_sni">Desactivar SNI</string>
-    <string name="flow">Fluir</string>
+    <string name="flow">Flujo</string>
     <string name="ws_max_early_data">Datos iniciales máximos</string>
     <string name="hijack_dns">Secuestrar DNS</string>
     <string name="reality_public_key">Clave pública REALITY</string>
-    <string name="tuic_zero_rtt_handshake">Protocolo de enlace 0-RTT</string>
+    <string name="tuic_zero_rtt_handshake">Negociación 0-RTT</string>
     <string name="alter_id">ID alternativo</string>
     <string name="url">URL</string>
     <string name="connection_test_url_test">Prueba de URL</string>
@@ -455,8 +455,6 @@
     <string name="resolve_destination_for_direct">Resolver destino (directo)</string>
     <string name="edns_client_ip">IP del cliente EDNS</string>
     <string name="allow_apps_bypass_vpn">Permitir que las apps omitan la VPN</string>
-    <string name="ech_config">Configuración ECH</string>
-    <string name="ech_doh_server">Servidor ECH DoH</string>
     <string name="backup_all_profiles">Respaldar todos los perfiles</string>
     <string name="acquire_wake_lock">Adquirir WakeLock</string>
     <string name="log_level">Nivel de registro</string>
@@ -534,7 +532,7 @@
     <string name="debug_log_sum">La configuración en ejecución se imprimirá en el registro del sistema, por lo que el registro contendrá las claves secretas utilizadas para conectarse a los servidores. Este nivel de registro es necesario para informar de problemas. Elimine la información confidencial antes de publicar los archivos de registro.</string>
     <string name="do_not_show_again">No volver a mostrar</string>
     <string name="format">Formato: %s</string>
-    <string name="mieru_handshake_mode">Modo de protocolo de enlace</string>
+    <string name="mieru_handshake_mode">Modo de negociación</string>
     <string name="fragment_method">Método de fragmentación</string>
     <string name="tls_record_fragmentation">Fragmentación de registros TLS</string>
     <string name="tcp_segmentation">Segmentación TCP</string>
@@ -566,7 +564,6 @@
     <string name="insecure_warn_sum">Muestra advertencias para perfiles con seguridad equivalente al texto sin cifrar.</string>
     <string name="ech">ECH</string>
     <string name="mieru_traffic_pattern">Patrón de tráfico</string>
-    <string name="server_name_to_verify">ServerNameToVerify</string>
     <string name="require_socks">Activar SOCKS5 de entrada</string>
     <string name="insecure_warning_detail">La seguridad de este perfil es equivalente a la del texto sin cifrar.\n\nEsta advertencia se muestra porque la opción \"Advertencias de seguridad\" está activada.</string>
     <string name="hysteria_hop_interval_min">Intervalo mínimo de salto de puerto (s)</string>
@@ -582,4 +579,15 @@
     <string name="custom_outbound">Salida personalizada</string>
     <string name="hysteria2_gecko_max_packet_size">Tamaño máximo de paquete</string>
     <string name="hysteria2_gecko_min_packet_size">Tamaño mínimo de paquete</string>
+    <string name="nearby_devices_permission_notice">Para funcionar, se requiere el permiso \"dispositivos cercanos\", pero no se ha concedido.</string>
+    <string name="snell_reuse">Reutilizar conexión</string>
+    <string name="pre_shared_key">Clave pre-compartida</string>
+    <string name="snell_obfs_mode">Modo de ofuscación</string>
+    <string name="snell_obfs_host">Host de ofuscación</string>
+    <string name="snell_mode">Modo</string>
+    <string name="anytls_disable_reuse">Deshabilitar la reutilización de la conexión</string>
+    <string name="chrome_parrot_summary">Imita el QUIC Client Hello de Chrome</string>
+    <string name="chrome_parrot_omit_max_datagram_frame_size_datagram_warning">Esta opción está desactivada para que coincida con el comportamiento de Chrome.</string>
+    <string name="option_globally_enabled">Esta opción se ha activado globalmente y el valor se omitirá.</string>
+    <string name="snell_obfs_uri">URI de ofuscación</string>
 </resources>

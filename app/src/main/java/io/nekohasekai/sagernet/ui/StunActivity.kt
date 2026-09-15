@@ -84,33 +84,43 @@ class StunActivity : ThemedActivity() {
             DataStore.stunServers.listByLineOrComma().toTypedArray()
         }
 
-        binding.natStunServer.setText(if (DataStore.stunServers.isEmpty()) list.random() else list[0])
-        binding.natStunServer.setOnClickListener {
+        binding.stunServerAddress.setText(when {
+            DataStore.stunServerAddress.isNotEmpty() -> DataStore.stunServerAddress
+            DataStore.stunServers.isEmpty() -> list.random()
+            else -> list[0]
+        })
+        binding.stunServerAddress.setOnClickListener {
             val listPopupWindow = ListPopupWindow(this)
             listPopupWindow.setAdapter(
                 ArrayAdapter(this, android.R.layout.simple_list_item_1, list)
             )
             listPopupWindow.setOnItemClickListener { _, _, i, _ ->
-                binding.natStunServer.setText(list[i])
+                binding.stunServerAddress.setText(list[i])
                 listPopupWindow.dismiss()
             }
-            listPopupWindow.anchorView = binding.natStunServer
+            listPopupWindow.anchorView = binding.stunServerAddress
             listPopupWindow.show()
         }
-        binding.stunRB.isChecked = true
+        binding.stunTestType.setSelection(DataStore.stunTestType)
         binding.stunTest.setOnClickListener {
-            when {
-                binding.stunRB.isChecked -> doTest()
-                binding.stunLegacyRB.isChecked -> doLegacyTest()
+            DataStore.stunServerAddress = binding.stunServerAddress.text.toString()
+            DataStore.stunTestType = binding.stunTestType.selectedItemPosition
+            when (binding.stunTestType.selectedItemPosition) {
+                0 -> doNatBehaviorDiscovery()
+                1 -> doNatTypeTest()
+                2 -> doBinding(isTCP = false)
+                3 -> doBinding(isTCP = true)
             }
         }
+        binding.waitLayout.isVisible = false
+        binding.resultLayout.isVisible = true
         binding.natMappingBehaviourCard.isVisible = false
         binding.natFilteringBehaviourCard.isVisible = false
         binding.natTypeCard.isVisible = false
         binding.natExternalAddressCard.isVisible = false
     }
 
-    fun doTest() {
+    fun doNatBehaviorDiscovery() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
@@ -120,7 +130,7 @@ class StunActivity : ThemedActivity() {
                     useDNSUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc_dns.sock")
                 }
             }
-            val result = stunClient.stunTest(binding.natStunServer.text.toString())
+            val result = stunClient.stunNatBehaviorDiscovery(binding.stunServerAddress.text.toString())
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {
                     AlertDialog.Builder(this@StunActivity)
@@ -133,15 +143,16 @@ class StunActivity : ThemedActivity() {
                 binding.resultLayout.isVisible = true
                 markwon.setMarkdown(binding.natMappingBehaviour, result.natMapping)
                 markwon.setMarkdown(binding.natFilteringBehaviour, result.natFiltering)
+                markwon.setMarkdown(binding.natExternalAddress, result.host)
                 binding.natMappingBehaviourCard.isVisible = true
                 binding.natFilteringBehaviourCard.isVisible = true
                 binding.natTypeCard.isVisible = false
-                binding.natExternalAddressCard.isVisible = false
+                binding.natExternalAddressCard.isVisible = true
             }
         }
     }
 
-    fun doLegacyTest() {
+    fun doNatTypeTest() {
         binding.waitLayout.isVisible = true
         binding.resultLayout.isVisible = false
         runOnDefaultDispatcher {
@@ -151,7 +162,7 @@ class StunActivity : ThemedActivity() {
                     useDNSUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc_dns.sock")
                 }
             }
-            val result = stunClient.stunLegacyTest(binding.natStunServer.text.toString())
+            val result = stunClient.stunNatTypeTest(binding.stunServerAddress.text.toString())
             onMainDispatcher {
                 if (result.error.isNotEmpty()) {
                     AlertDialog.Builder(this@StunActivity)
@@ -167,6 +178,40 @@ class StunActivity : ThemedActivity() {
                 binding.natMappingBehaviourCard.isVisible = false
                 binding.natFilteringBehaviourCard.isVisible = false
                 binding.natTypeCard.isVisible = true
+                binding.natExternalAddressCard.isVisible = true
+            }
+        }
+    }
+
+    fun doBinding(isTCP: Boolean) {
+        binding.waitLayout.isVisible = true
+        binding.resultLayout.isVisible = false
+        runOnDefaultDispatcher {
+            val stunClient = Libexclavecore.newStunClient().apply {
+                if (SagerNet.started && DataStore.startedProfile > 0) {
+                    useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
+                    useDNSUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc_dns.sock")
+                }
+            }
+            val result = if (isTCP) {
+                stunClient.stunTCPBinding(binding.stunServerAddress.text.toString())
+            } else {
+                stunClient.stunBinding(binding.stunServerAddress.text.toString())
+            }
+            onMainDispatcher {
+                if (result.error.isNotEmpty()) {
+                    AlertDialog.Builder(this@StunActivity)
+                        .setTitle(R.string.error_title)
+                        .setMessage(result.error)
+                        .setPositiveButton(android.R.string.ok) { _, _ -> }
+                        .runCatching { show() }
+                }
+                binding.waitLayout.isVisible = false
+                binding.resultLayout.isVisible = true
+                markwon.setMarkdown(binding.natExternalAddress, result.host)
+                binding.natMappingBehaviourCard.isVisible = false
+                binding.natFilteringBehaviourCard.isVisible = false
+                binding.natTypeCard.isVisible = false
                 binding.natExternalAddressCard.isVisible = true
             }
         }

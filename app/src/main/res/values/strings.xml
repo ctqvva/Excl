@@ -583,8 +583,7 @@
     <string name="allow_apps_bypass_vpn_sum">Allow apps to bypass VPN using system-provided methods on their own</string>
     <string name="update_all_subscriptions">Update all subscriptions</string>
     <string name="cag_splithttp">XHTTP settings</string>
-    <string name="ech_config">ECH Config</string>
-    <string name="ech_doh_server">ECH DoH server</string>
+    <string name="ech_config_list" translatable="false">ECHConfigList</string>
     <string name="splithttp_mode">Mode</string>
     <string name="splithttp_extra" translatable="false">Extra</string>
     <string name="backup_all_profiles">Backup all profiles</string>
@@ -692,7 +691,7 @@
     <string name="insecure_warn">Security tips</string>
     <string name="insecure_warn_sum">Display warnings for profiles with equivalent security to cleartext.</string>
     <string name="ech">ECH</string>
-    <string name="server_name_to_verify">ServerNameToVerify</string>
+    <string name="server_name_to_verify" translatable="false">ServerNameToVerify</string>
     <string name="mieru_traffic_pattern">Traffic pattern</string>
     <string name="insecure_warning_detail">The security of this profile is equivalent to cleartext.\n\nThis warning is displayed because \"security tips\" is enabled.</string>
     <string name="hysteria_hop_interval_min">Minimum port hopping interval (s)</string>
@@ -700,6 +699,7 @@
     <string name="hysteria_bbr_profile">BBR profile</string>
     <string name="require_socks">Enable SOCKS5 inbound</string>
     <string name="custom_package_name_or_uid">Custom package name or UID</string>
+    <string name="tcp" translatable="false">TCP</string>
     <string name="udp" translatable="false">UDP</string>
     <string name="reality_mldsa65_verify" translatable="false">REALITY mldsa65Verify</string>
     <string name="socks5_udp_authentication_warning">SOCKS5 UDP is not protected by username/password authentication. If UDP is enabled, the authentication can be bypassed easily.</string>
@@ -711,4 +711,17 @@
     <string name="hysteria2_gecko_max_packet_size">Maximum packet size</string>
     <string name="hysteria2_gecko_min_packet_size">Minimum packet size</string>
     <string name="nearby_devices_permission_notice">This requires the \"nearby devices\" permission to work, but the permission has not been granted.</string>
+    <string name="action_snell" translatable="false">Snell</string>
+    <string name="snell_reuse">Connection reuse</string>
+    <string name="pre_shared_key">Pre-shared key</string>
+    <string name="snell_obfs_mode">Obfuscation mode</string>
+    <string name="snell_obfs_host">Obfuscation host</string>
+    <string name="snell_mode">Mode</string>
+    <string name="anytls_disable_reuse">Disable connection reuse</string>
+    <string name="chrome_parrot" translatable="false">Chrome parrot</string>
+    <string name="chrome_parrot_summary">Imitate Chrome\'s QUIC Client Hello</string>
+    <string name="chrome_parrot_omit_max_datagram_frame_size_datagram_warning">This option is disabled to match Chrome\'s behavior.</string>
+    <string name="option_globally_enabled">This option has been enabled globally and the value will be omitted.</string>
+    <string name="ech_query_name" translatable="false">ECHQueryName</string>
+    <string name="snell_obfs_uri">Obfuscation URI</string>
 </resources>

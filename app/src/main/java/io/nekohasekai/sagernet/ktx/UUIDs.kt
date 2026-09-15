@@ -23,10 +23,8 @@ import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import kotlin.experimental.and
 import kotlin.experimental.or
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalUuidApi::class)
 fun uuid5(text: String): String {
     val data = ByteArrayOutputStream()
     data.write(ByteArray(16))
@@ -40,15 +38,26 @@ fun uuid5(text: String): String {
     return Uuid.fromByteArray(result).toHexDashString()
 }
 
-@OptIn(ExperimentalUuidApi::class)
-fun uuidOrGenerate(text: String): String {
-    if (text.length != 36) {
-        return uuid5(text)
-    }
-    try {
-        Uuid.parseHexDash(text)
-        return text
-    } catch (_: Exception) {
-        return uuid5(text)
+fun parseUUID(text: String): Uuid? {
+    return when (text.length) {
+        32 -> {
+            Uuid.parseHexOrNull(text)
+        }
+        34 if text.startsWith('{') && text.endsWith('}') -> {
+            Uuid.parseHexOrNull(text.removePrefix("{").removeSuffix("}"))
+        }
+        36 -> {
+            Uuid.parseHexDashOrNull(text)
+        }
+        38 if text.startsWith('{') && text.endsWith('}') -> {
+            Uuid.parseHexDashOrNull(text.removePrefix("{").removeSuffix("}"))
+        }
+        41 if text.startsWith("urn:uuid:") -> {
+            Uuid.parseHexOrNull(text.removePrefix("urn:uuid:"))
+        }
+        45 if text.startsWith("urn:uuid:") -> {
+            Uuid.parseHexDashOrNull(text.removePrefix("urn:uuid:"))
+        }
+        else -> null
     }
 }

@@ -82,6 +82,17 @@ import io.nekohasekai.sagernet.fmt.internal.BalancerBean
 import io.nekohasekai.sagernet.fmt.internal.ChainBean
 import io.nekohasekai.sagernet.utils.FormatFileSizeCompat
 
+@android.annotation.SuppressLint("ClickableViewAccessibility")
+fun View.suppressDragWhilePressed(setPressed: (Boolean) -> Unit) {
+    setOnTouchListener { _, event ->
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> setPressed(true)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> setPressed(false)
+        }
+        false
+    }
+}
+
 class ConfigurationFragment @JvmOverloads constructor(
     val select: Boolean = false, val selectedItem: ProxyEntity? = null, val titleRes: Int = 0
 ) : ToolbarFragment(R.layout.layout_group_list),
@@ -392,7 +403,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             ).show()
 
             val group = SagerDatabase.groupDao.getById(targetId)!!
-            GroupManager.updateGroup(group)
+            GroupManager.updateGroup(group, reconfigureUpdater = false)
         }
 
     }
@@ -517,6 +528,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             R.id.action_new_trusttunnel -> {
                 startActivity(Intent(requireActivity(), TrustTunnelSettingsActivity::class.java))
+            }
+            R.id.action_new_snell -> {
+                startActivity(Intent(requireActivity(), SnellSettingsActivity::class.java))
             }
             R.id.action_new_config -> {
                 startActivity(Intent(requireActivity(), ConfigSettingsActivity::class.java))
@@ -1083,6 +1097,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                     ?: return false).state.let { it.canStop || it == BaseService.State.Stopped }
             }
 
+        private var actionButtonPressed = false
+
         private fun isProfileEditable(id: Long): Boolean {
             return ((activity as? MainActivity)
                 ?: return false).state == BaseService.State.Stopped || id != DataStore.selectedProxy
@@ -1105,11 +1121,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 onViewCreated(requireView(), null)
             }
             checkOrderMenu()
-
-            if (!DataStore.experimentalFlagsProperties.getBooleanProperty("shadowquic")) {
-                (parentFragment as? ToolbarFragment)
-                    ?.toolbar?.menu?.findItem(R.id.action_new_shadowquic)?.isVisible  = false
-            }
 
             if (showBackup) {
                 (parentFragment as? ToolbarFragment)
@@ -1145,7 +1156,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 if (proxyGroup.order == order) return
                 runOnDefaultDispatcher {
                     proxyGroup.order = order
-                    GroupManager.updateGroup(proxyGroup)
+                    GroupManager.updateGroup(proxyGroup, reconfigureUpdater = false)
                 }
             }
 
@@ -1209,7 +1220,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                     override fun getDragDirs(
                         recyclerView: RecyclerView,
                         viewHolder: RecyclerView.ViewHolder,
-                    ) = if (isEnabled) super.getDragDirs(recyclerView, viewHolder) else 0
+                    ) = if (isEnabled && !actionButtonPressed) super.getDragDirs(
+                        recyclerView, viewHolder
+                    ) else 0
 
                     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                     }
@@ -1514,10 +1527,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     notifyDataSetChanged()
 
                     if (selectedProfileIndex != -1 && !scrolled) {
-                        configurationListView.scrollTo(selectedProfileIndex, true)
+                        layoutManager.scrollToPositionWithOffset(selectedProfileIndex, 0)
                         scrolled = true
                     } else if (newProfiles.isNotEmpty() && !scrolled) {
-                        configurationListView.scrollTo(0, true)
+                        layoutManager.scrollToPositionWithOffset(0, 0)
                         scrolled = true
                     }
 
@@ -1736,6 +1749,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
+                // suppress ItemTouchHelper drag while a row button is held, to avoid conflict with parent item's long-press
+                deleteButton.suppressDragWhilePressed { actionButtonPressed = it }
+                editButton.suppressDragWhilePressed { actionButtonPressed = it }
+                shareLayout.suppressDragWhilePressed { actionButtonPressed = it }
+
                 editButton.isGone = parent.select
                 deleteButton.isGone = parent.select
                 shareButton.isGone = parent.select
@@ -1923,5 +1941,4 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
         }
     }
-
 }

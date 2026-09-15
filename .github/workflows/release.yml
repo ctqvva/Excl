@@ -27,17 +27,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: 1.26.4
+          go-version: 1.27.1
           cache-dependency-path: "library/core/go.sum"
       - name: Setup Go Mobile
         # https://github.com/golang/mobile/blob/c31d5b91ecc32c0d598b8fe8457d244ca0b4e815/cmd/gomobile/init.go#L83
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260611195102-4dd8f1dbf5d2
-          go install golang.org/x/mobile/cmd/gobind@v0.0.0-20260611195102-4dd8f1dbf5d2
+          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260908204917-8b95e45f8d3e
+          go install golang.org/x/mobile/cmd/gobind@v0.0.0-20260908204917-8b95e45f8d3e
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: 21
@@ -46,7 +46,7 @@ jobs:
         id: setup-ndk
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r29
+          ndk-version: r30
       - name: Native Build
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -58,7 +58,7 @@ jobs:
           path: app/libs/libexclavecore.aar
           name: "LibExclaveCore"
       - name: Gradle Cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.gradle
           key: gradle-${{ hashFiles('**/*.gradle.kts') }}
@@ -67,14 +67,17 @@ jobs:
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           ./gradlew :app:downloadAssets
-          ./gradlew :app:assembleOssRelease
-          APK="app/build/outputs/apk/oss/release"
-          echo "APK=$APK" >> $GITHUB_ENV
+          ./gradlew :app:assembleOssRelease :app:assembleLegacyRelease
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: APKs
-          path: ${{ env.APK }}
+          path: app/build/outputs/apk/oss/release
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: APKs-legacy
+          path: app/build/outputs/apk/legacy/release
   publish:
     name: Publish Release
     if: github.event.inputs.release == 'y' && github.event.inputs.tag != ''
@@ -91,7 +94,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: APKs
-          path: artifacts
+          path: artifacts/oss
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: APKs-legacy
+          path: artifacts/legacy
       - name: Publish Pre-release
         if: github.event.inputs.prerelease == 'y'
         run: |

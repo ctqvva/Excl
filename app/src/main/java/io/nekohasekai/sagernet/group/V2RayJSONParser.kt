@@ -25,6 +25,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.anytls.AnyTLSBean
 import io.nekohasekai.sagernet.fmt.http.HttpBean
@@ -32,9 +33,11 @@ import io.nekohasekai.sagernet.fmt.http3.Http3Bean
 import io.nekohasekai.sagernet.fmt.hysteria2.Hysteria2Bean
 import io.nekohasekai.sagernet.fmt.juicity.JuicityBean
 import io.nekohasekai.sagernet.fmt.mieru.MieruBean
+import io.nekohasekai.sagernet.fmt.shadowquic.ShadowQUICBean
 import io.nekohasekai.sagernet.fmt.shadowsocks.ShadowsocksBean
 import io.nekohasekai.sagernet.fmt.shadowsocks.supportedShadowsocks2022Method
 import io.nekohasekai.sagernet.fmt.shadowsocks.supportedShadowsocksMethod
+import io.nekohasekai.sagernet.fmt.snell.SnellBean
 import io.nekohasekai.sagernet.fmt.socks.SOCKSBean
 import io.nekohasekai.sagernet.fmt.ssh.SSHBean
 import io.nekohasekai.sagernet.fmt.trojan.TrojanBean
@@ -44,8 +47,10 @@ import io.nekohasekai.sagernet.fmt.tuic5.supportedTuic5CongestionControl
 import io.nekohasekai.sagernet.fmt.tuic5.supportedTuic5RelayMode
 import io.nekohasekai.sagernet.fmt.v2ray.VLESSBean
 import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
+import io.nekohasekai.sagernet.fmt.v2ray.getXrayRangeAsTriple
 import io.nekohasekai.sagernet.fmt.v2ray.legacyVlessFlow
 import io.nekohasekai.sagernet.fmt.v2ray.nonRawTransportName
+import io.nekohasekai.sagernet.fmt.v2ray.parseRayUUID
 import io.nekohasekai.sagernet.fmt.v2ray.supportedKcpQuicHeaderType
 import io.nekohasekai.sagernet.fmt.v2ray.supportedQuicSecurity
 import io.nekohasekai.sagernet.fmt.v2ray.supportedVlessFlow
@@ -55,7 +60,8 @@ import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
 import io.nekohasekai.sagernet.fmt.wireguard.putAmneziaOption
 import io.nekohasekai.sagernet.ktx.*
 import libexclavecore.Libexclavecore
-import java.util.Base64
+import kotlin.io.encoding.Base64
+import kotlin.uuid.Uuid
 
 private val V2RAY_AMNEZIA_WG_OPTION_KEYS = listOf("jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4", "i1", "i2", "i3", "i4", "i5")
 
@@ -147,19 +153,19 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                         }
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                                     v2rayBean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         v2rayBean.allowInsecure = allowInsecure
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                                     v2rayBean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         v2rayBean.allowInsecure = allowInsecure
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                                     v2rayBean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         v2rayBean.allowInsecure = allowInsecure
@@ -175,25 +181,42 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                         v2rayBean.allowInsecure = true
                                     }
                                 }
-                                if (v2rayBean is VLESSBean || v2rayBean is TrojanBean) {
-                                    // Only parse ECH for shit VLESS or Trojan free nodes
+                                tlsSettings.getString("verifyPeerCertByName")?.split(",")
+                                    ?.filter { it.isNotEmpty() }?.takeIf { it.isNotEmpty() }?.also {
+                                        // Xray verifyPeerCertByName
+                                    v2rayBean.serverNameToVerify = it.joinToString("\n")
+                                }
+                                tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                                    v2rayBean.serverNameToVerify = it.joinToString("\n")
+                                }
+                                if (v2rayBean is VLESSBean || v2rayBean is TrojanBean || v2rayBean is VMessBean) {
                                     tlsSettings.getString("echDohServer")?.also {
                                         v2rayBean.echEnabled = true
                                     }
                                     tlsSettings.getString("echConfig")?.also {
                                         v2rayBean.echEnabled = true
-                                        v2rayBean.echConfig = it
+                                        v2rayBean.echConfigList = it
                                     }
-                                    tlsSettings.getString("echConfigList")?.also {
+                                    tlsSettings.getString("echConfigList")?.takeIf { it.isNotEmpty() }?.also {
                                         v2rayBean.echEnabled = true
-                                        try {
-                                            Base64.getDecoder().decode(it)
-                                            v2rayBean.echConfig = it
-                                        } catch (_: Exception) {}
+                                        // See the shit in https://github.com/XTLS/Xray-core/blob/f124daf5a37c3b968a618f92ca42396f3c001de5/transport/internet/tls/ech.go#L50-L83
+                                        if (it.contains("://")) {
+                                            val parts = it.split("+", limit = 2)
+                                            if (parts.size == 2) {
+                                                v2rayBean.echQueryName = parts[0]
+                                            }
+                                        } else {
+                                            try {
+                                                Base64.decode(it)
+                                                v2rayBean.echConfigList = it
+                                                v2rayBean.echQueryName = ""
+                                            } catch (_: Exception) {}
+                                        }
                                     }
                                     tlsSettings.getObject("ech")?.also {
                                         v2rayBean.echEnabled = it.getBoolean("enabled")
-                                        v2rayBean.echConfig = it.getString("config")
+                                        v2rayBean.echConfigList = it.getString("config")
+                                        v2rayBean.echQueryName = it.getString("queryDomain")
                                     }
                                 }
                             }
@@ -223,16 +246,10 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         }
                     }
                 }
-                streamSettings.getString("network")?.lowercase()?.also { network ->
+                (streamSettings.getString("method") ?: streamSettings.getString("network"))?.lowercase()?.also { network ->
                     when (network) {
                         "tcp", "raw" -> {
                             v2rayBean.type = "tcp"
-                            streamSettings.getObject("finalmask")?.also { finalmask ->
-                                // ban Xray TCP finalmask
-                                finalmask.getArray("tcp")?.takeIf { it.isNotEmpty() }?.also {
-                                    return listOf()
-                                }
-                            }
                             (streamSettings.getObject("tcpSettings") ?: streamSettings.getObject("rawSettings"))?.also { tcpSettings ->
                                 tcpSettings.getObject("header")?.also { header ->
                                     header.getString("type")?.lowercase()?.also { type ->
@@ -613,31 +630,6 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                     v2rayBean.splithttpExtra = GsonBuilder().setPrettyPrinting().create().toJson(extra)
                                 }
                             }
-                            streamSettings.getObject("finalmask")?.also { finalmask ->
-                                if (v2rayBean.alpn != "h3") {
-                                    // ban Xray TCP finalmask
-                                    finalmask.getArray("tcp")?.takeIf { it.isNotEmpty() }?.also {
-                                        return listOf()
-                                    }
-                                } else {
-                                    // ban Xray UDP finalmask
-                                    finalmask.getArray("udp")?.takeIf { it.isNotEmpty() }?.also {
-                                        return listOf()
-                                    }
-                                    // ban Xray QUIC port hopping
-                                    finalmask.getObject("quicParams")?.also { quicParams ->
-                                        quicParams.getObject("udphop")?.also { udphop ->
-                                            udphop.getInt("ports")?.also {
-                                                return listOf()
-                                            } ?: udphop.getString("ports")?.takeIf { it.isNotEmpty() }?.also {
-                                                it.split(",").joinToString(",") { it.trim() }
-                                                    .takeIf { it.isValidHysteriaPort(disallowFromGreaterThanTo = true) }
-                                                    ?.also { return listOf() }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
                         }
                         "hysteria2", "hy2" -> {
                             v2rayBean.type = "hysteria2"
@@ -669,27 +661,28 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                 finalmask.getArray("udp")?.takeIf { it.isNotEmpty() }?.also {
                                     return listOf()
                                 }
-                                // ban Xray QUIC port hopping
-                                finalmask.getObject("quicParams")?.also { quicParams ->
-                                    quicParams.getObject("udphop")?.also { udphop ->
-                                        udphop.getInt("ports")?.also {
-                                            return listOf()
-                                        } ?: udphop.getString("ports")?.takeIf { it.isNotEmpty() }?.also {
-                                            it.split(",").joinToString(",") { it.trim() }
-                                                .takeIf { it.isValidHysteriaPort(disallowFromGreaterThanTo = true) }
-                                                ?.also { return listOf() }
-                                        }
-                                    }
-                                }
                             }
                         }
                         else -> return listOf()
                     }
                     when (v2rayBean.type) {
-                        "ws", "grpc", "httpupgrade" -> {
+                        "tcp", "ws", "grpc", "httpupgrade", "http" -> {
                             streamSettings.getObject("finalmask")?.also { finalmask ->
                                 // ban Xray TCP finalmask
                                 finalmask.getArray("tcp")?.takeIf { it.isNotEmpty() }?.also {
+                                    return listOf()
+                                }
+                            }
+                        }
+                        "splithttp" -> {
+                            streamSettings.getObject("finalmask")?.also { finalmask ->
+                                // leave it broken, I don't care
+                                // ban Xray TCP finalmask
+                                finalmask.getArray("tcp")?.takeIf { it.isNotEmpty() }?.also {
+                                    return listOf()
+                                }
+                                // ban Xray UDP finalmask
+                                finalmask.getArray("udp")?.takeIf { it.isNotEmpty() }?.also {
                                     return listOf()
                                 }
                             }
@@ -715,7 +708,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                 v2rayBean.serverPort = it
                             } ?: return listOf()
                             settings.getString("id")?.also {
-                                v2rayBean.uuid = uuidOrGenerate(it)
+                                v2rayBean.uuid = parseRayUUID(it) ?: return listOf()
                             }
                             settings.getString("security")?.lowercase()?.also {
                                 if (it !in supportedVmessMethod) return listOf()
@@ -741,7 +734,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                             } ?: return listOf()
                             vnext.getArray("users")?.get(0)?.also { user ->
                                 user.getString("id")?.also {
-                                    v2rayBean.uuid = uuidOrGenerate(it)
+                                    v2rayBean.uuid = parseRayUUID(it) ?: return listOf()
                                 }
                                 user.getString("security")?.lowercase()?.also {
                                     if (it !in supportedVmessMethod) return listOf()
@@ -782,7 +775,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                 v2rayBean.serverPort = it
                             } ?: return listOf()
                             settings.getString("id")?.also {
-                                v2rayBean.uuid = uuidOrGenerate(it)
+                                v2rayBean.uuid = parseRayUUID(it) ?: return listOf()
                             }
                             settings.getString("flow")?.also {
                                 when (it) {
@@ -800,7 +793,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                 else -> {
                                     val parts = encryption.split(".")
                                     if (parts.size < 4 || parts[0] != "mlkem768x25519plus"
-                                        || !(parts[1] == "native" || parts[1] == "xorpub" || parts[1] != "random")
+                                        || !(parts[1] == "native" || parts[1] == "xorpub" || parts[1] == "random")
                                         || !(parts[2] == "1rtt" || parts[2] == "0rtt")) {
                                         error("unsupported vless encryption")
                                     }
@@ -819,7 +812,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                             } ?: return listOf()
                             vnext.getArray("users")?.get(0)?.also { user ->
                                 user.getString("id")?.also {
-                                    v2rayBean.uuid = uuidOrGenerate(it)
+                                    v2rayBean.uuid = parseRayUUID(it) ?: return listOf()
                                 }
                                 user.getString("flow")?.also {
                                     when (it) {
@@ -837,7 +830,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                     else -> {
                                         val parts = encryption.split(".")
                                         if (parts.size < 4 || parts[0] != "mlkem768x25519plus"
-                                            || !(parts[1] == "native" || parts[1] == "xorpub" || parts[1] != "random")
+                                            || !(parts[1] == "native" || parts[1] == "xorpub" || parts[1] == "random")
                                             || !(parts[2] == "1rtt" || parts[2] == "0rtt")) {
                                             error("unsupported vless encryption")
                                         }
@@ -1069,6 +1062,16 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                     }
                 }
             }
+            if (v2rayBean.security == "reality") {
+                when (v2rayBean.type) {
+                    "tcp", "http", "grpc", "splithttp" -> {}
+                    else -> return listOf()
+                }
+            }
+            if (v2rayBean is VLESSBean && v2rayBean.security != "none"&& v2rayBean.flow == "xtls-rprx-vision-udp443"
+                && v2rayBean.type != "tcp" && v2rayBean.encryption == "none") {
+                return listOf()
+            }
             return listOf(v2rayBean)
         }
         "hysteria2" -> {
@@ -1180,42 +1183,39 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                         }
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                                     hysteria2Bean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         hysteria2Bean.allowInsecure = allowInsecure
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                                     hysteria2Bean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         hysteria2Bean.allowInsecure = allowInsecure
                                     }
                                 }
-                                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                                     hysteria2Bean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                         hysteria2Bean.allowInsecure = allowInsecure
                                     }
                                 }
-                                /*tlsSettings.getString("echDohServer")?.also {
+                                tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                                    hysteria2Bean.serverNameToVerify = it.joinToString("\n")
+                                }
+                                tlsSettings.getString("echDohServer")?.also {
                                     hysteria2Bean.echEnabled = true
                                 }
                                 tlsSettings.getString("echConfig")?.also {
                                     hysteria2Bean.echEnabled = true
-                                    hysteria2Bean.echConfig = it
-                                }
-                                tlsSettings.getString("echConfigList")?.also {
-                                    hysteria2Bean.echEnabled = true
-                                    try {
-                                        Base64.getDecoder().decode(it)
-                                        hysteria2Bean.echConfig = it
-                                    } catch (_: Exception) {}
+                                    hysteria2Bean.echConfigList = it
                                 }
                                 tlsSettings.getObject("ech")?.also {
                                     hysteria2Bean.echEnabled = it.getBoolean("enabled")
-                                    hysteria2Bean.echConfig = it.getString("config")
-                                }*/
+                                    hysteria2Bean.echConfigList = it.getString("config")
+                                    hysteria2Bean.echQueryName = it.getString("queryDomain")
+                                }
                             }
                         }
                         else -> return listOf()
@@ -1284,7 +1284,11 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                     tuic5Bean.serverPort = it
                 } ?: return listOf()
                 settings.getString("uuid")?.also {
-                    tuic5Bean.uuid = it
+                    try {
+                        Uuid.parseHexDashOrNull(it)
+                    } catch (_: Exception) {
+                        return listOf()
+                    }
                 }
                 settings.getString("password")?.also {
                     tuic5Bean.password = it
@@ -1346,27 +1350,31 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         }
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                     tuic5Bean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         tuic5Bean.allowInsecure = allowInsecure
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                     tuic5Bean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         tuic5Bean.allowInsecure = allowInsecure
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                     tuic5Bean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         tuic5Bean.allowInsecure = allowInsecure
                     }
                 }
+                tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                    tuic5Bean.serverNameToVerify = it.joinToString("\n")
+                }
                 /*tlsSettings.getObject("ech")?.also {
                     tuic5Bean.echEnabled = it.getBoolean("enabled")
                     tuic5Bean.echConfig = it.getString("config")
+                    tuic5Bean.echQueryName = it.getString("queryDomain")
                 }*/
             }
             return listOf(tuic5Bean)
@@ -1436,27 +1444,31 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         }
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                     http3Bean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         http3Bean.allowInsecure = allowInsecure
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                     http3Bean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         http3Bean.allowInsecure = allowInsecure
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                     http3Bean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         http3Bean.allowInsecure = allowInsecure
                     }
                 }
+                tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                    http3Bean.serverNameToVerify = it.joinToString("\n")
+                }
                 /*tlsSettings.getObject("ech")?.also {
                     http3Bean.echEnabled = it.getBoolean("enabled")
                     http3Bean.echConfig = it.getString("config")
+                    http3Bean.echQueryName = it.getString("queryDomain")
                 }*/
             }
             return listOf(http3Bean)
@@ -1532,27 +1544,31 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                     }
                                 }
                             }
-                            tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                            tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                                 anytlsBean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                                 tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                     anytlsBean.allowInsecure = allowInsecure
                                 }
                             }
-                            tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                            tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                                 anytlsBean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                                 tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                     anytlsBean.allowInsecure = allowInsecure
                                 }
                             }
-                            tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                            tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                                 anytlsBean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                                 tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                                     anytlsBean.allowInsecure = allowInsecure
                                 }
                             }
+                            tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                                anytlsBean.serverNameToVerify = it.joinToString("\n")
+                            }
                             /*tlsSettings.getObject("ech")?.also {
                                 anytlsBean.echEnabled = it.getBoolean("enabled")
                                 anytlsBean.echConfig = it.getString("config")
+                                anytlsBean.echQueryName = it.getString("queryDomain")
                             }*/
                         }
                     }
@@ -1595,6 +1611,11 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                     juicityBean.serverPort = it
                 } ?: return listOf()
                 settings.getString("uuid")?.also {
+                    try {
+                        Uuid.parseHexDashOrNull(it)
+                    } catch (_: Exception) {
+                        return listOf()
+                    }
                     juicityBean.uuid = it
                 }
                 settings.getString("password")?.also {
@@ -1640,27 +1661,31 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         }
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                     juicityBean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                     // match Juicity's behavior
                     // https://github.com/juicity/juicity/blob/412dbe43e091788c5464eb2d6e9c169bdf39f19c/cmd/client/run.go#L97
                     juicityBean.allowInsecure = true
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                     juicityBean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         juicityBean.allowInsecure = allowInsecure
                     }
                 }
-                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                     juicityBean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                     tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                         juicityBean.allowInsecure = allowInsecure
                     }
                 }
+                tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                    juicityBean.serverNameToVerify = it.joinToString("\n")
+                }
                 /*tlsSettings.getObject("ech")?.also {
                     juicityBean.echEnabled = it.getBoolean("enabled")
                     juicityBean.echConfig = it.getString("config")
+                    juicityBean.echQueryName = it.getString("queryDomain")
                 }*/
             }
             return listOf(juicityBean)
@@ -1715,6 +1740,78 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
             }
             return listOf(mieruBean)
         }
+        "snell" -> {
+            val snellBean = SnellBean()
+            outbound.getObject("settings")?.also { settings ->
+                outbound.getString("tag")?.also {
+                    snellBean.name = it
+                }
+                settings.getString("address")?.also {
+                    snellBean.serverAddress = it
+                } ?: return listOf()
+                settings.getPort("port")?.also {
+                    snellBean.serverPort = it
+                } ?: return listOf()
+                snellBean.version = settings.getInt("version")
+                if (snellBean.version != 4 && snellBean.version != 6) {
+                    return listOf()
+                }
+                settings.getString("psk")?.also {
+                    snellBean.psk = it
+                }
+                if (DataStore.experimentalFlagsProperties.getBooleanProperty("singSnellUserKey")) {
+                    settings.getString("userKey")?.also {
+                        snellBean.userKey = it
+                    }
+                }
+                snellBean.reuse = settings.getBoolean("reuse") ?: false
+                when (snellBean.version) {
+                    4 -> when (settings.getString("obfsMode")) {
+                        null, "", "none" -> {
+                            snellBean.obfsMode = SnellBean.OBFS_NONE
+                        }
+                        "http" -> {
+                            snellBean.obfsMode = SnellBean.OBFS_HTTP
+                            snellBean.obfsHost = settings.getString("obfsHost")
+                            snellBean.obfsURI = settings.getString("obfsURI")
+                        }
+                        "tls" -> {
+                            snellBean.obfsMode = SnellBean.OBFS_TLS
+                            snellBean.obfsHost = settings.getString("obfsHost")
+                        }
+                        else -> return listOf()
+                    }
+                    6 -> snellBean.mode = when (settings.getString("mode")) {
+                        null, "", "default" -> SnellBean.MODE_DEFAULT
+                        "unshaped" -> SnellBean.MODE_UNSHAPED
+                        "unsafe-raw" -> SnellBean.MODE_UNSAFE_RAW
+                        else -> return listOf()
+                    }
+                }
+            }
+            return listOf(snellBean)
+        }
+        "shadowquic" -> {
+            val shadowquicBean = ShadowQUICBean()
+            outbound.getObject("settings")?.also { settings ->
+                outbound.getString("tag")?.also {
+                    shadowquicBean.name = it
+                }
+                settings.getString("address")?.also {
+                    shadowquicBean.serverAddress = it
+                } ?: return listOf()
+                settings.getPort("port")?.also {
+                    shadowquicBean.serverPort = it
+                } ?: return listOf()
+                shadowquicBean.username = settings.getString("username")
+                shadowquicBean.password = settings.getString("password")
+                shadowquicBean.udpOverStream = settings.getBoolean("udpOverStream")
+                shadowquicBean.zeroRTT = settings.getBoolean("zeroRTTHandshake")
+                shadowquicBean.sni = settings.getString("servername")
+                shadowquicBean.alpn = settings.getStringArray("alpn")?.joinToString("\n") ?: ""
+            }
+            return listOf(shadowquicBean)
+        }
         "wireguard" -> {
             val beanList = mutableListOf<WireGuardBean>()
             val wireguardBean = WireGuardBean()
@@ -1725,7 +1822,9 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                 settings.getString("secretKey")?.also {
                     // https://github.com/XTLS/Xray-core/blob/d8934cf83946e88210b6bb95d793bc06e12b6db8/infra/conf/wireguard.go#L126-L148
                     if (it.length == 64) {
-                        wireguardBean.privateKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+                        try {
+                            wireguardBean.privateKey = Base64.encode(it.hexToByteArray())
+                        } catch (_: Exception) {}
                     } else {
                         wireguardBean.privateKey = it.replace('_', '/').replace('-', '+')
                         if (wireguardBean.privateKey.length == 43) wireguardBean.privateKey += "="
@@ -1749,12 +1848,19 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                 settings.getArray("peers")?.forEach { peer ->
                     beanList.add(wireguardBean.applyDefaultValues().clone().apply {
                         peer.getString("endpoint")?.also { endpoint ->
-                            serverAddress = endpoint.substringBeforeLast(":").removePrefix("[").removeSuffix("]")
-                            serverPort = endpoint.substringAfterLast(":").toIntOrNull() ?: return listOf()
+                            try {
+                                val hostPort = Libexclavecore.splitHostPort(endpoint)
+                                serverAddress = hostPort.host
+                                serverPort = hostPort.port
+                            } catch (_: Exception) {
+                                return listOf()
+                            }
                         }
                         peer.getString("publicKey")?.also {
                             if (it.length == 64) {
-                                peerPublicKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+                                try {
+                                    peerPublicKey = Base64.encode(it.hexToByteArray())
+                                } catch (_: Exception) {}
                             } else {
                                 peerPublicKey = it.replace('_', '/').replace('-', '+')
                                 if (peerPublicKey.length == 43) peerPublicKey += "="
@@ -1762,7 +1868,9 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                         }
                         peer.getString("preSharedKey")?.also {
                             if (it.length == 64) {
-                                peerPreSharedKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+                                try {
+                                    peerPreSharedKey = Base64.encode(it.hexToByteArray())
+                                } catch (_: Exception) {}
                             } else {
                                 peerPreSharedKey = it.replace('_', '/').replace('-', '+')
                                 if (peerPreSharedKey.length == 43) peerPreSharedKey += "="
@@ -1815,29 +1923,13 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                     hysteria2Bean.auth = it
                                 }
                                 hysteriaSettings.getObject("udphop")?.also { udphop ->
-                                    udphop.getInt("port")?.also {
-                                        if (it > 0) hysteria2Bean.serverPorts = it.toString()
-                                    } ?: udphop.getString("port")?.takeIf { it.isNotEmpty() }?.also {
-                                        // invalid port is ignored
-                                        hysteria2Bean.serverPorts = (it.split(",").joinToString(",") { it.trim() })
-                                            .takeIf { it.isValidHysteriaPort(disallowFromGreaterThanTo = true) }
-                                    }
-                                    udphop.getLong("interval")?.also {
-                                        hysteria2Bean.hopInterval = it.takeIf { it > 0 }
-                                    } ?: udphop.getString("interval")?.also {
-                                        val intervalLong = it.toLongOrNull()
-                                        if (intervalLong != null && intervalLong > 0) {
-                                            hysteria2Bean.hopInterval = intervalLong
+                                    hysteria2Bean.serverPorts = udphop.getXrayPortRange("ports")
+                                    udphop.getXrayRangeAsTriple("interval")?.takeIf { it.first >= 5 && it.second >= 5 }?.also {
+                                        if (it.third) {
+                                            hysteria2Bean.hopInterval = it.first.toLong()
                                         } else {
-                                            val intervalStringList = it.split("-")
-                                            if (intervalStringList.size == 2) {
-                                                val intervalLong0 = intervalStringList[0].toLongOrNull()
-                                                val intervalLong1 = intervalStringList[1].toLongOrNull()
-                                                if (intervalLong0 != null && intervalLong0 > 0 && intervalLong1 != null && intervalLong1 > 0) {
-                                                    hysteria2Bean.hopIntervalMin = minOf(intervalLong0, intervalLong1)
-                                                    hysteria2Bean.hopIntervalMax = maxOf(intervalLong0, intervalLong1)
-                                                }
-                                            }
+                                            hysteria2Bean.hopIntervalMin = it.first.toLong()
+                                            hysteria2Bean.hopIntervalMax = it.second.toLong()
                                         }
                                     }
                                 }
@@ -1847,75 +1939,66 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                     }
                 }
                 streamSettings.getObject("finalmask")?.also { finalmask ->
-                    finalmask.getArray("udp")?.takeIf { it.isNotEmpty() }?.also { udpMasks ->
-                        if (udpMasks.size != 1) return listOf()
-                        val udpmask = udpMasks[0]
-                        when (udpmask.getString("type")) {
-                            "" -> {}
-                            "salamander" -> {
-                                hysteria2Bean.obfsType = "salamander"
-                                udpmask.getObject("settings")?.also { settings ->
-                                    settings.getString("password")?.also {
-                                        hysteria2Bean.obfsPassword = it
-                                    }
+                    finalmask.getObject("quicParams")?.also { quicParams ->
+                        quicParams.getObject("udphop")?.also { udphop ->
+                            hysteria2Bean.serverPorts = udphop.getXrayPortRange("ports")
+                            udphop.getXrayRangeAsTriple("interval")?. takeIf { it.first >= 5 && it.second >= 5 }?.also {
+                                if (it.third) {
+                                    hysteria2Bean.hopInterval = it.first.toLong()
+                                } else {
+                                    hysteria2Bean.hopIntervalMin = it.first.toLong()
+                                    hysteria2Bean.hopIntervalMax = it.second.toLong()
                                 }
                             }
-                            "gecko" -> {
-                                hysteria2Bean.obfsType = "gecko"
-                                udpmask.getObject("settings")?.also { settings ->
-                                    settings.getString("password")?.also {
-                                        hysteria2Bean.obfsPassword = it
-                                    }
-                                    settings.getInt("packetSize")?.also {
-                                        hysteria2Bean.geckoMinPacketSize = it.takeIf { it > 0 }
-                                        hysteria2Bean.geckoMaxPacketSize = it.takeIf { it > 0 }
-                                    } ?: settings.getString("packetSize")?.also {
-                                        val packetSizeInt = it.toIntOrNull()
-                                        if (packetSizeInt != null && packetSizeInt > 0) {
-                                            hysteria2Bean.geckoMinPacketSize = packetSizeInt
-                                            hysteria2Bean.geckoMaxPacketSize = packetSizeInt
-                                        } else {
-                                            val packetSizeStringList = it.split("-")
-                                            if (packetSizeStringList.size == 2) {
-                                                val packetSizeInt0 = packetSizeStringList[0].toIntOrNull()
-                                                val packetSizeInt1 = packetSizeStringList[1].toIntOrNull()
-                                                if (packetSizeInt0 != null && packetSizeInt0 > 0 && packetSizeInt1 != null && packetSizeInt1 > 0) {
-                                                    hysteria2Bean.geckoMinPacketSize = minOf(packetSizeInt0, packetSizeInt1)
-                                                    hysteria2Bean.geckoMaxPacketSize = maxOf(packetSizeInt0, packetSizeInt1)
-                                                }
-                                            }
-                                        }
-                                    }
+                        }
+                    }
+                    finalmask.getArray("udp")?.takeIf { it.isNotEmpty() }?.also { udpMasks ->
+                        var obfsMask: JsonObject? = null
+                        var hopMask: JsonObject? = null
+                        when (udpMasks.size) {
+                            1 -> {
+                                when (udpMasks[0].getString("type")) {
+                                    "salamander" -> obfsMask = udpMasks[0]
+                                    "udphop" -> hopMask = udpMasks[0]
+                                    else -> return listOf()
+                                }
+                            }
+                            2 -> {
+                                when (udpMasks[0].getString("type")) {
+                                    "salamander" -> obfsMask = udpMasks[0]
+                                    else -> return listOf()
+                                }
+                                when (udpMasks[1].getString("type")) {
+                                    "udphop" -> hopMask = udpMasks[1]
+                                    else -> return listOf()
                                 }
                             }
                             else -> return listOf()
                         }
-                    }
-                    finalmask.getObject("quicParams")?.also { quicParams ->
-                        quicParams.getObject("udphop")?.also { udphop ->
-                            udphop.getInt("ports")?.also {
-                                if (it > 0) hysteria2Bean.serverPorts = it.toString()
-                            } ?: udphop.getString("ports")?.takeIf { it.isNotEmpty() }?.also {
-                                // invalid port is ignored
-                                hysteria2Bean.serverPorts = (it.split(",").joinToString(",") { it.trim() })
-                                    .takeIf { it.isValidHysteriaPort(disallowFromGreaterThanTo = true) }
+                        obfsMask?.getObject("settings")?.also { settings ->
+                            settings.getString("password")?.also {
+                                hysteria2Bean.obfsPassword = it
                             }
-                            udphop.getLong("interval")?.also {
-                                hysteria2Bean.hopInterval = it.takeIf { it > 0 }
-                            } ?: udphop.getString("interval")?.also {
-                                val intervalLong = it.toLongOrNull()
-                                if (intervalLong != null && intervalLong > 0) {
-                                    hysteria2Bean.hopInterval = intervalLong
+                            hysteria2Bean.obfsType = "salamander"
+                            settings.getXrayRangeAsTriple("packetSize")?.takeIf { it.second > 0 }?.also {
+                                if (it.first <= 0 || it.second > 2048) {
+                                    return listOf()
+                                }
+                                hysteria2Bean.obfsType = "gecko"
+                                hysteria2Bean.geckoMinPacketSize = it.first
+                                hysteria2Bean.geckoMaxPacketSize = it.second
+                            }
+                        }
+                        hopMask?.getObject("settings")?.also { settings ->
+                            // settings.getString("mode") // ignored for now
+                            // settings.getString("remoteIPs") // ignored for now
+                            hysteria2Bean.serverPorts = settings.getXrayPortRange("remotePorts")
+                            settings.getXrayRangeAsTriple("interval")?.takeIf { it.first >= 5 && it.second >= 5 }?.also {
+                                if (it.third) {
+                                    hysteria2Bean.hopInterval = it.first.toLong()
                                 } else {
-                                    val intervalStringList = it.split("-")
-                                    if (intervalStringList.size == 2) {
-                                        val intervalLong0 = intervalStringList[0].toLongOrNull()
-                                        val intervalLong1 = intervalStringList[1].toLongOrNull()
-                                        if (intervalLong0 != null && intervalLong0 > 0 && intervalLong1 != null && intervalLong1 > 0) {
-                                            hysteria2Bean.hopIntervalMin = minOf(intervalLong0, intervalLong1)
-                                            hysteria2Bean.hopIntervalMax = maxOf(intervalLong0, intervalLong1)
-                                        }
-                                    }
+                                    hysteria2Bean.hopIntervalMin = it.first.toLong()
+                                    hysteria2Bean.hopIntervalMax = it.second.toLong()
                                 }
                             }
                         }
@@ -1968,13 +2051,26 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                                         hysteria2Bean.allowInsecure = true
                                     }
                                 }
-                                /*tlsSettings.getString("echConfigList")?.also {
+                                tlsSettings.getString("verifyPeerCertByName")?.split(",")
+                                    ?.filter { it.isNotEmpty() }?.takeIf { it.isNotEmpty() }?.also {
+                                    hysteria2Bean.serverNameToVerify = it.joinToString("\n")
+                                }
+                                tlsSettings.getString("echConfigList")?.takeIf { it.isNotEmpty() }?.also {
                                     hysteria2Bean.echEnabled = true
-                                    try {
-                                        Base64.getDecoder().decode(it)
-                                        hysteria2Bean.echConfig = it
-                                    } catch (_: Exception) {}
-                                }*/
+                                    // See the shit in https://github.com/XTLS/Xray-core/blob/f124daf5a37c3b968a618f92ca42396f3c001de5/transport/internet/tls/ech.go#L50-L83
+                                    if (it.contains("://")) {
+                                        val parts = it.split("+", limit = 2)
+                                        if (parts.size == 2) {
+                                            hysteria2Bean.echQueryName = parts[0]
+                                        }
+                                    } else {
+                                        try {
+                                            Base64.decode(it)
+                                            hysteria2Bean.echConfigList = it
+                                            hysteria2Bean.echQueryName = ""
+                                        } catch (_: Exception) {}
+                                    }
+                                }
                             }
                         }
                         else -> return listOf()
@@ -2002,6 +2098,7 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                     trusttunnelBean.password = it
                 }
                 settings.getString("serverNameToVerify")?.also {
+                    // for old Exclave backward compatibility
                     trusttunnelBean.serverNameToVerify = it
                 }
                 settings.getBoolean("http3")?.also {
@@ -2052,23 +2149,26 @@ fun parseV2RayOutbound(outbound: JsonObject): List<AbstractBean> {
                             }
                         }
                     }
-                    tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.also {
+                    tlsSettings.getStringArray("pinnedPeerCertificateChainSha256")?.takeIf { it.isNotEmpty() }?.also {
                         trusttunnelBean.pinnedPeerCertificateChainSha256 = it.joinToString("\n")
                         tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                             trusttunnelBean.allowInsecure = allowInsecure
                         }
                     }
-                    tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.also {
+                    tlsSettings.getStringArray("pinnedPeerCertificatePublicKeySha256")?.takeIf { it.isNotEmpty() }?.also {
                         trusttunnelBean.pinnedPeerCertificatePublicKeySha256 = it.joinToString("\n")
                         tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                             trusttunnelBean.allowInsecure = allowInsecure
                         }
                     }
-                    tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.also {
+                    tlsSettings.getStringArray("pinnedPeerCertificateSha256")?.takeIf { it.isNotEmpty() }?.also {
                         trusttunnelBean.pinnedPeerCertificateSha256 = it.joinToString("\n")
                         tlsSettings.getBoolean("allowInsecureIfPinnedPeerCertificate")?.also { allowInsecure ->
                             trusttunnelBean.allowInsecure = allowInsecure
                         }
+                    }
+                    tlsSettings.getStringArray("serverNameToVerify")?.takeIf { it.isNotEmpty() }?.also {
+                        trusttunnelBean.serverNameToVerify = it.joinToString("\n")
                     }
                     /*tlsSettings.getObject("ech")?.also {
                         trusttunnelBean.echEnabled = it.getBoolean("enabled")
@@ -2268,6 +2368,21 @@ private fun JsonObject.getPort(key: String): Int? {
                 v.asJsonPrimitive.isString -> return v.asString.toIntOrNull()
             }
         }
+    }
+    return null
+}
+
+private fun JsonObject.getXrayPortRange(key: String): String? {
+    this.getInt(key, ignoreCase = true)?.also {
+        return if (it > 0) "$it-$it" else null
+    }
+    this.getString(key, ignoreCase = true)?.also { portRange ->
+        if (portRange.isEmpty()) {
+            return null
+        }
+        // invalid port is ignored
+        return portRange.split(",").joinToString(",") { it.trim() }
+            .takeIf { it.isValidHysteriaPort(disallowFromGreaterThanTo = true) }
     }
     return null
 }

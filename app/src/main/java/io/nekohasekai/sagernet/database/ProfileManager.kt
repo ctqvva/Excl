@@ -19,8 +19,14 @@
 
 package io.nekohasekai.sagernet.database
 
+import android.content.res.Resources
 import android.database.sqlite.SQLiteCantOpenDatabaseException
+import android.icu.util.ULocale
+import android.os.Build
+import android.os.LocaleList
+import androidx.appcompat.app.AppCompatDelegate
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.aidl.TrafficStats
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.ktx.Logs
@@ -29,7 +35,6 @@ import io.nekohasekai.sagernet.ktx.applyDefaultValues
 import java.io.IOException
 import java.sql.SQLException
 import java.util.*
-
 
 object ProfileManager {
 
@@ -202,10 +207,25 @@ object ProfileManager {
         var rules = SagerDatabase.rulesDao.allRules()
         if (rules.isEmpty() && !DataStore.rulesFirstCreate) {
             DataStore.rulesFirstCreate = true
-            val country = Locale.getDefault().country
-            val displayCountry = Locale.getDefault().displayCountry
-            when {
-                country == "CN" -> {
+            val systemLocale = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> SagerNet.locale.systemLocales[0]!!
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.N -> LocaleList.getDefault()[0]
+                else -> Locale.getDefault()
+            }
+            val appLocales = AppCompatDelegate.getApplicationLocales()
+            val appLocale = when {
+                appLocales.size() > 0 -> appLocales[0]!!
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.N -> Resources.getSystem().configuration.locales[0]!!
+                else -> @Suppress("DEPRECATION") Resources.getSystem().configuration.locale
+            }
+            val country = systemLocale.country
+            val displayCountry = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                ULocale.getDisplayCountry(systemLocale.toLanguageTag(), appLocale.toLanguageTag())
+            } else {
+                systemLocale.getDisplayCountry(appLocale)
+            }
+            when (country) {
+                "CN" -> {
                     createRule(
                         RuleEntity(
                             name = app.getString(R.string.route_play_store, displayCountry),
@@ -220,7 +240,7 @@ object ProfileManager {
                         ), false
                     )
                 }
-                country == "IR" -> {
+                "IR" -> {
                     createRule(
                         RuleEntity(
                             name = app.getString(R.string.route_bypass_domain, displayCountry),
@@ -229,7 +249,7 @@ object ProfileManager {
                         ), false
                     )
                 }
-                country == "RU" -> {
+                "RU" -> {
                     createRule(
                         // https://habr.com/ru/articles/1020080/
                         // Added because of the request from users. Do not rely on it.
@@ -247,15 +267,15 @@ object ProfileManager {
                         ), false
                     )
                 }
-                country.length == 2 -> {
-                    createRule(
-                        RuleEntity(
-                            name = app.getString(R.string.route_bypass_ip, displayCountry),
-                            ip = "geoip:${country.lowercase()}",
-                            outbound = -1
-                        ), false
-                    )
-                }
+            }
+            if (country.length == 2) {
+                createRule(
+                    RuleEntity(
+                        name = app.getString(R.string.route_bypass_ip, displayCountry),
+                        ip = "geoip:${country.lowercase()}",
+                        outbound = -1
+                    ), false
+                )
             }
             createRule(
                 RuleEntity(

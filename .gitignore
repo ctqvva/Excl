@@ -1,14 +1,10 @@
 *.aar
 *.jar
-*.iml
 .gradle
 .idea
 .kotlin
 .DS_Store
 build/
-/captures
-.externalNativeBuild
-.cxx
 local.properties
 /app/libs/
 /app/src/main/assets/exclave-core/*.dat

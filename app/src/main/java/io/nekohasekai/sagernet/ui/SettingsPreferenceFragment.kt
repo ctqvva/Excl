@@ -22,6 +22,7 @@ package io.nekohasekai.sagernet.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.icu.util.ULocale
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -162,6 +163,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             return when (code) {
                 "" -> getString(R.string.language_system_default)
                 "ar" -> getString(R.string.language_ar_display_name)
+                "cs" -> getString(R.string.language_cs_display_name)
                 "en-US" -> getString(R.string.language_en_display_name)
                 "es" -> getString(R.string.language_es_display_name)
                 "fa" -> getString(R.string.language_fa_display_name)
@@ -172,10 +174,15 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 "ko" -> getString(R.string.language_ko_display_name)
                 "nb-NO" -> getString(R.string.language_nb_NO_display_name)
                 "ru" -> getString(R.string.language_ru_display_name)
+                "ta" -> getString(R.string.language_ta_display_name)
                 "tr" -> getString(R.string.language_tr_display_name)
                 "zh-Hans-CN" -> getString(R.string.language_zh_Hans_CN_display_name)
                 "zh-Hant-TW" -> getString(R.string.language_zh_Hant_TW_display_name)
-                else -> Locale.forLanguageTag(code).displayName // just a fallback name from Java
+                else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    ULocale.forLanguageTag(code).displayName
+                } else {
+                    Locale.forLanguageTag(code).displayName
+                }
             }
         }
         val appLanguage = findPreference<ListPreference>(Key.APP_LANGUAGE)!!
@@ -231,9 +238,9 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 httpProxyException.isVisible = canAppendHttpProxy && appendHttpProxy.isChecked
             }
             if (SagerNet.started) {
-                SagerNet.stopService()
-                runOnMainDispatcher {
-                    delay(300)
+                runOnDefaultDispatcher {
+                    SagerNet.stopService()
+                    delay(300) // FIXME: Why this is needed?
                     SagerNet.startService()
                 }
             }
@@ -258,11 +265,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                     setPositiveButton(android.R.string.ok, null)
                 }.show()
             }
-            enablePcap.isEnabled = serviceMode.value == MODE_VPN && (newValue as String).toInt() == TunImplementation.GVISOR
+            enablePcap.isEnabled = serviceMode.value == MODE_VPN && newValue.toInt() == TunImplementation.GVISOR
             if (SagerNet.started) {
-                SagerNet.stopService()
-                runOnMainDispatcher {
-                    SagerNet.startService()
+                runOnDefaultDispatcher {
+                    SagerNet.reloadService()
                 }
             }
             true
@@ -275,7 +281,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         allowAppsBypassVpn.isEnabled =
             serviceMode.value == MODE_VPN && !DataStore.privacyBlockVpnBypassApi
         allowAppsBypassVpn.onPreferenceChangeListener = reloadListener
-        if (Build.VERSION.SDK_INT < 28) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             meteredNetwork.remove()
         }
         meteredNetwork.isEnabled = serviceMode.value == MODE_VPN

@@ -37,9 +37,9 @@ import java.math.BigInteger
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.SecureRandom
-import java.util.Base64
 import java.util.UUID
 import java.util.zip.Inflater
+import kotlin.io.encoding.Base64
 import kotlin.jvm.optionals.getOrNull
 
 private const val AMNEZIA_WG_RESERVED_PREFIX = "EXAWG1\u0000"
@@ -155,7 +155,7 @@ private fun generateWireGuardKeyPair(): Pair<String, String> {
     privateKey[0] = (privateKey[0].toInt() and 248).toByte()
     privateKey[31] = ((privateKey[31].toInt() and 127) or 64).toByte()
     val publicKey = x25519PublicKey(privateKey)
-    return Base64.getEncoder().encodeToString(privateKey) to Base64.getEncoder().encodeToString(publicKey)
+    return java.util.Base64.getEncoder().encodeToString(privateKey) to java.util.Base64.getEncoder().encodeToString(publicKey)
 }
 
 private fun WireGuardBean.amneziaUapiLines(): List<String> {
@@ -193,7 +193,7 @@ fun parseWireGuardReservedPayload(raw: String): List<Int>? {
     }
     if (raw.isNotBlank()) {
         try {
-            val decoded = Base64.getDecoder().decode(raw)
+            val decoded = java.util.Base64.getDecoder().decode(raw)
             if (decoded.size == 3) {
                 return decoded.map { it.toInt() and 0xff }
             }
@@ -248,9 +248,9 @@ private fun decodeAmneziaVpnPayload(server: String): String {
     }.trim()
     val padded = encoded + "=".repeat((4 - encoded.length % 4) % 4)
     val decoded = runCatching {
-        Base64.getUrlDecoder().decode(padded)
+        java.util.Base64.getUrlDecoder().decode(padded)
     }.getOrElse {
-        Base64.getDecoder().decode(padded)
+        java.util.Base64.getDecoder().decode(padded)
     }
     val uncompressed = inflateQtPayload(decoded)
         ?: inflatePayload(decoded)
@@ -653,43 +653,29 @@ fun parseAmneziaVpn(server: String): List<WireGuardBean> {
 fun parseWireGuard(server: String): WireGuardBean {
     val link = Libexclavecore.parseURL(server)
     return WireGuardBean().apply {
-        serverAddress = link.host.ifEmpty { error("empty host") }
-        serverPort = link.port.takeIf { it > 0 } ?: 51820
+        serverAddress = link.host
+        serverPort = when {
+            !link.hasPort() -> error("invalid port")
+            else -> link.port
+        }
         if (link.username.isNotEmpty()) {
-            // https://github.com/XTLS/Xray-core/blob/d8934cf83946e88210b6bb95d793bc06e12b6db8/infra/conf/wireguard.go#L126-L148
-            privateKey = link.username.replace('_', '/').replace('-', '+')
-            if (privateKey.length == 43) privateKey += "="
+            privateKey = parseXrayStupidKey(link.username)
             // v2rayNG style link
             // https://github.com/XTLS/Xray-core/blob/d8934cf83946e88210b6bb95d793bc06e12b6db8/infra/conf/wireguard.go#L75
             localAddress = "10.0.0.1/32\nfd59:7153:2388:b5fd:0000:0000:0000:0001/128"
         }
         (link.queryParameter("privatekey") ?: link.queryParameter("privateKey")) ?.let {
-            if (it.length == 64) {
-                privateKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
-            } else {
-                privateKey = it.replace('_', '/').replace('-', '+')
-                if (privateKey.length == 43) privateKey += "="
-            }
+            privateKey = parseXrayStupidKey(it)
         }
         (link.queryParameter("address") ?: link.queryParameter("ip")) ?.takeIf { it.isNotEmpty() }?.also {
+            // TODO: validate address
             localAddress = it.split(",").joinToString("\n")
         }
         (link.queryParameter("publickey") ?: link.queryParameter("publicKey")) ?.let {
-            if (it.length == 64) {
-                peerPublicKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
-            } else {
-                peerPublicKey = it.replace('_', '/').replace('-', '+')
-                if (peerPublicKey.length == 43) peerPublicKey += "="
-            }
+            peerPublicKey = parseXrayStupidKey(it)
         }
         (link.queryParameter("presharedkey") ?: link.queryParameter("preSharedKey")) ?.let {
-            if (peerPreSharedKey.length == 43) peerPreSharedKey += "="
-            if (it.length == 64) {
-                peerPreSharedKey = Base64.getEncoder().encodeToString(it.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
-            } else {
-                peerPreSharedKey = it.replace('_', '/').replace('-', '+')
-                if (peerPreSharedKey.length == 43) peerPreSharedKey += "="
-            }
+            peerPreSharedKey = parseXrayStupidKey(it)
         }
         link.queryParameter("mtu")?.toIntOrNull()?.takeIf { it > 0 }?.let {
             mtu = it
@@ -711,6 +697,19 @@ fun parseWireGuard(server: String): WireGuardBean {
     }
 }
 
+private fun parseXrayStupidKey(str: String): String {
+    // https://github.com/XTLS/Xray-core/blob/d8934cf83946e88210b6bb95d793bc06e12b6db8/infra/conf/wireguard.go#L126-L148
+    val key = if (str.length == 64) {
+        str.hexToByteArray()
+    } else if (str.contains("-") || str.contains("_")) {
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(str)
+    } else {
+        Base64.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).decode(str)
+    }
+    require(key.size == 32)
+    return Base64.encode(key)
+}
+
 fun parseWireGuardConfig(conf: String): List<WireGuardBean> {
     val beans = mutableListOf<WireGuardBean>()
     val ini = try {
@@ -730,7 +729,8 @@ fun parseWireGuardConfig(conf: String): List<WireGuardBean> {
         localAddress = iface.getAllOr("Address").getOrNull()
             ?.takeIf { it.isNotEmpty() }?.joinToString("\n")
             ?: return beans
-        privateKey = iface.getOr("PrivateKey").getOrNull() ?: return beans
+        privateKey = iface.getOr("PrivateKey").get()
+        require(Base64.decode(privateKey).size == 32)
         mtu = iface.getOr("MTU").getOrNull()?.toInt()?.takeIf { it > 0 } ?: 1420
         AMNEZIA_OPTION_KEYS.forEach {
             putAmneziaOption(it, readOption(it))
@@ -743,10 +743,15 @@ fun parseWireGuardConfig(conf: String): List<WireGuardBean> {
             continue
         }
         beans.add(wgBean.applyDefaultValues().clone().apply {
-            serverAddress = endpoint.substringBeforeLast(":").removePrefix("[").removeSuffix("]").ifEmpty { error("empty host") }
-            serverPort = endpoint.substringAfterLast(":").toIntOrNull() ?: continue
-            peerPublicKey = peer.getOr("PublicKey").getOrNull() ?: continue
+            val hostPort = Libexclavecore.splitHostPort(endpoint)
+            serverAddress = hostPort.host
+            serverPort = hostPort.port
+            peerPublicKey = peer.getOr("PublicKey").get()
+            require(Base64.decode(peerPublicKey).size == 32)
             peerPreSharedKey = peer.getOr("PreSharedKey").getOrNull()
+            if (!peerPreSharedKey.isNullOrEmpty()) {
+                require(Base64.decode(peerPreSharedKey).size == 32)
+            }
             keepaliveInterval = peer.getOr("PersistentKeepalive").getOrNull()?.toIntOrNull()?.takeIf { it > 0 }
         })
     }
@@ -760,11 +765,14 @@ fun WireGuardBean.toConf(): String {
     if (mtu > 0) {
         iface.put("MTU", mtu)
     }
-    iface.put("PrivateKey", privateKey.ifEmpty { error("empty private key") })
+    require(Base64.decode(privateKey).size == 32)
+    iface.put("PrivateKey", privateKey)
     val peer = ini.create("Peer")
-    peer.put("Endpoint", joinHostPort(serverAddress.ifEmpty { error("empty server address") }, serverPort))
-    peer.put("PublicKey", peerPublicKey.ifEmpty { error("empty peer public key") })
+    peer.put("Endpoint", joinHostPort(serverAddress, serverPort))
+    require(Base64.decode(peerPublicKey).size == 32)
+    peer.put("PublicKey", peerPublicKey)
     if (peerPreSharedKey.isNotEmpty()) {
+        require(Base64.decode(peerPreSharedKey).size == 32)
         peer.put("PreSharedKey", peerPreSharedKey)
     }
     if (keepaliveInterval > 0) {

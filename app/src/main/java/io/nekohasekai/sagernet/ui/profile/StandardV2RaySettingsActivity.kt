@@ -132,9 +132,11 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         DataStore.serverSplithttpExtra = splithttpExtra
         DataStore.serverUTLSFingerprint = utlsFingerprint
         DataStore.serverEchEnabled = echEnabled
-        DataStore.serverEchConfig = echConfig
+        DataStore.serverEchConfigList = echConfigList
+        DataStore.serverEchQueryName = echQueryName
         DataStore.serverMtlsCertificate = mtlsCertificate
         DataStore.serverMtlsCertificatePrivateKey = mtlsCertificatePrivateKey
+        DataStore.serverServerNameToVerify = serverNameToVerify
 
         DataStore.serverRealityPublicKey = realityPublicKey
         DataStore.serverRealityShortId = realityShortId
@@ -148,6 +150,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         DataStore.serverUploadSpeed = hy2UpMbps
         DataStore.serverDownloadSpeed = hy2DownMbps
         DataStore.serverPassword = hy2Password
+        DataStore.serverHysteria2ChromeParrot = hy2ChromeParrot
 
         DataStore.serverMekyaKcpSeed = mekyaKcpSeed
         DataStore.serverMekyaKcpHeaderType = mekyaKcpHeaderType
@@ -241,7 +244,9 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         mtlsCertificate = DataStore.serverMtlsCertificate
         mtlsCertificatePrivateKey = DataStore.serverMtlsCertificatePrivateKey
         echEnabled = DataStore.serverEchEnabled
-        echConfig = DataStore.serverEchConfig
+        echConfigList = DataStore.serverEchConfigList
+        echQueryName = DataStore.serverEchQueryName
+        serverNameToVerify = DataStore.serverServerNameToVerify
 
         realityPublicKey = DataStore.serverRealityPublicKey
         realityShortId = DataStore.serverRealityShortId
@@ -255,6 +260,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         hy2UpMbps = DataStore.serverUploadSpeed
         hy2DownMbps = DataStore.serverDownloadSpeed
         hy2Password = DataStore.serverPassword
+        hy2ChromeParrot = DataStore.serverHysteria2ChromeParrot
 
         mekyaKcpSeed = DataStore.serverMekyaKcpSeed
         mekyaKcpHeaderType = DataStore.serverMekyaKcpHeaderType
@@ -304,7 +310,9 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
     lateinit var mtlsCertificate: EditTextPreference
     lateinit var mtlsCertificatePrivateKey: EditTextPreference
     lateinit var echEnabled: SwitchPreference
-    lateinit var echConfig: EditTextPreference
+    lateinit var echConfigList: EditTextPreference
+    lateinit var echQueryName: EditTextPreference
+    lateinit var serverNameToVerify: EditTextPreference
 
     lateinit var realityPublicKey: EditTextPreference
     lateinit var realityShortId: EditTextPreference
@@ -317,6 +325,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
     lateinit var hy2UpMbps: EditTextPreference
     lateinit var hy2DownMbps: EditTextPreference
     lateinit var hy2Password: EditTextPreference
+    lateinit var hy2ChromeParrot: SwitchPreference
 
     lateinit var mekyaKcpSeed: EditTextPreference
     lateinit var mekyaKcpHeaderType: ListPreference
@@ -381,18 +390,27 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         mtlsCertificate = findPreference(Key.SERVER_MTLS_CERTIFICATE)!!
         mtlsCertificatePrivateKey = findPreference(Key.SERVER_MTLS_CERTIFICATE_PRIVATE_KEY)!!
         echEnabled = findPreference(Key.SERVER_ECH_ENABLED)!!
-        echConfig = findPreference(Key.SERVER_ECH_CONFIG)!!
-        echConfig.isEnabled = echEnabled.isChecked
+        echConfigList = findPreference(Key.SERVER_ECH_CONFIG_LIST)!!
+        echQueryName = findPreference(Key.SERVER_ECH_QUERY_NAME)!!
+        echConfigList.isEnabled = echEnabled.isChecked
+        echQueryName.isEnabled = echEnabled.isChecked
         echEnabled.setOnPreferenceChangeListener { _, newValue ->
-            echConfig.isEnabled = newValue as Boolean
+            echConfigList.isEnabled = newValue as Boolean
+            echQueryName.isEnabled = newValue
             true
         }
+        serverNameToVerify = findPreference(Key.SERVER_SERVER_NAME_TO_VERIFY)!!
 
         realityPublicKey = findPreference(Key.SERVER_REALITY_PUBLIC_KEY)!!
         realityShortId = findPreference(Key.SERVER_REALITY_SHORT_ID)!!
         realityMldsa65Verify = findPreference(Key.SERVER_REALITY_MLDSA65_VERIFY)!!
         realityFingerprint = findPreference(Key.SERVER_REALITY_FINGERPRINT)!!
         realityDisableX25519Mlkem768 = findPreference(Key.SERVER_REALITY_DISABLE_X25519MLKEM768)!!
+        realityDisableX25519Mlkem768.summary = if (DataStore.realityDisableX25519Mlkem768) {
+            getString(R.string.option_globally_enabled)
+        } else {
+            getString(R.string.reality_breaking_change_summary)
+        }
 
         realityPublicKey.apply {
             summaryProvider = PasswordSummaryProvider
@@ -412,6 +430,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
             title = resources.getString(R.string.hysteria2_password)
             dialogTitle = resources.getString(R.string.hysteria2_password)
         }
+        hy2ChromeParrot = findPreference(Key.SERVER_HYSTERIA2_CHROME_PARROT)!!
 
         mekyaKcpSeed = findPreference(Key.SERVER_MEKYA_KCP_SEED)!!
         mekyaKcpHeaderType = findPreference(Key.SERVER_MEKYA_KCP_HEADER_TYPE)!!
@@ -488,7 +507,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         }
 
         security.setOnPreferenceChangeListener { _, newValue ->
-            updateTle(newValue as String)
+            updateTle(newValue as String, network.value)
             true
         }
 
@@ -612,11 +631,12 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
             security.value = tlev[0]
         }
 
-        updateTle(security.value)
+        updateTle(security.value, network)
 
         hy2UpMbps.isVisible = network == "hysteria2"
         hy2DownMbps.isVisible = network == "hysteria2"
         hy2Password.isVisible = network == "hysteria2"
+        hy2ChromeParrot.isVisible = network == "hysteria2"
         quicSecurity.isVisible = network == "quic"
         mekyaKcpSeed.isVisible = network == "mekya"
         mekyaKcpHeaderType.isVisible = network == "mekya"
@@ -766,7 +786,7 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         }
     }
 
-    fun updateTle(security: String) {
+    fun updateTle(security: String, network: String) {
         securityCategory.isVisible = security == "tls" || security == "reality"
         certificates.isVisible = security == "tls"
         pinnedCertificateChain.isVisible = security == "tls"
@@ -778,13 +798,15 @@ abstract class StandardV2RaySettingsActivity : ProfileSettingsActivity<StandardV
         realityPublicKey.isVisible = security == "reality"
         realityShortId.isVisible = security == "reality"
         realityMldsa65Verify.isVisible = security == "reality"
-        utlsFingerprint.isVisible = security == "tls" && (network.value == "tcp" || network.value == "ws"
-                || network.value == "http" || network.value == "meek" || network.value == "httpupgrade"
-                || network.value == "grpc" || network.value == "splithttp" || network.value == "mekya")
+        utlsFingerprint.isVisible = security == "tls" && (network == "tcp" || network == "ws"
+                || network == "http" || network == "meek" || network == "httpupgrade"
+                || network == "grpc" || network == "splithttp" || network == "mekya")
         mtlsCertificate.isVisible = security == "tls"
         mtlsCertificatePrivateKey.isVisible = security == "tls"
         echEnabled.isVisible = security == "tls"
-        echConfig.isVisible = security == "tls"
+        echConfigList.isVisible = security == "tls"
+        echQueryName.isVisible = security == "tls"
+        serverNameToVerify.isVisible = security == "tls"
         realityFingerprint.isVisible = security == "reality"
         realityDisableX25519Mlkem768.isVisible = security == "reality"
     }

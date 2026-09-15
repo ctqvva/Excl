@@ -1,6 +1,6 @@
 /******************************************************************************
  *                                                                            *
- * Copyright (C) 2021 by nekohasekai <contact-sagernet@sekai.icu>             *
+ * Copyright (C) 2026  starifly                                               *
  *                                                                            *
  * This program is free software: you can redistribute it and/or modify       *
  * it under the terms of the GNU General Public License as published by       *
@@ -17,24 +17,39 @@
  *                                                                            *
  ******************************************************************************/
 
-package io.nekohasekai.sagernet.plugin.shadowquic
+package io.nekohasekai.sagernet.widget
 
-import android.net.Uri
-import android.os.ParcelFileDescriptor
-import io.nekohasekai.sagernet.plugin.NativePluginProvider
-import io.nekohasekai.sagernet.plugin.PathProvider
-import java.io.File
-import java.io.FileNotFoundException
+import android.content.Context
+import android.util.AttributeSet
+import androidx.appcompat.widget.AppCompatSpinner
 
-class BinaryProvider : NativePluginProvider() {
-    override fun populateFiles(provider: PathProvider) {
-        provider.addPath("shadowquic-plugin", 0b111101101)
+class ReselectableSpinner @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null
+) : AppCompatSpinner(context, attrs) {
+
+    var onPopupClosed: (() -> Unit)? = null
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (hasWindowFocus) onPopupClosed?.invoke()
     }
 
-    override fun getExecutable() = context!!.applicationInfo.nativeLibraryDir + "/libshadowquic.so"
-    override fun openFile(uri: Uri): ParcelFileDescriptor = when (uri.path) {
-        "/shadowquic-plugin" -> ParcelFileDescriptor.open(File(getExecutable()),
-            ParcelFileDescriptor.MODE_READ_ONLY)
-        else -> throw FileNotFoundException()
+    override fun setSelection(position: Int) {
+        val reselected = position == selectedItemPosition
+        super.setSelection(position)
+        if (reselected) notifyReselected(position)
+    }
+
+    override fun setSelection(position: Int, animate: Boolean) {
+        val reselected = position == selectedItemPosition
+        super.setSelection(position, animate)
+        if (reselected) notifyReselected(position)
+    }
+
+    private fun notifyReselected(position: Int) {
+        if (position < 0) return
+        onItemSelectedListener?.onItemSelected(
+            this, selectedView, position, adapter?.getItemId(position) ?: -1L
+        )
     }
 }

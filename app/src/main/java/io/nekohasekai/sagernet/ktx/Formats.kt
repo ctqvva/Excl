@@ -19,7 +19,6 @@
 
 package io.nekohasekai.sagernet.ktx
 
-import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.Serializable
 import io.nekohasekai.sagernet.fmt.anytls.parseAnyTLS
@@ -34,7 +33,6 @@ import io.nekohasekai.sagernet.fmt.shadowquic.parseShadowQUIC
 import io.nekohasekai.sagernet.fmt.shadowsocks.parseShadowsocks
 import io.nekohasekai.sagernet.fmt.shadowsocksr.parseShadowsocksR
 import io.nekohasekai.sagernet.fmt.socks.parseSOCKS
-import io.nekohasekai.sagernet.fmt.ssh.parseSSH
 import io.nekohasekai.sagernet.fmt.trusttunnel.parseTrustTunnel
 import io.nekohasekai.sagernet.fmt.tuic5.parseTuic
 import io.nekohasekai.sagernet.fmt.v2ray.parseV2Ray
@@ -57,7 +55,6 @@ fun String.decodeBase64(): String {
 }
 
 fun parseShareLinks(text: String): List<AbstractBean> {
-    val shadowQUICEnabled = DataStore.experimentalFlagsProperties.getBooleanProperty("shadowquic")
     val links = text.split('\n').flatMap { it.trim().split(' ') }
     val linksByLine = text.split('\n').map { it.trim() }
 
@@ -129,10 +126,6 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             runCatching {
                 entities.add(parseAnyTLS(this))
             }
-        } else if (startsWith("ssh://", ignoreCase = true)) {
-            runCatching {
-                entities.add(parseSSH(this))
-            }
         } else if (startsWith("tt://", ignoreCase = true)) {
             runCatching {
                 entities.addAll(parseTrustTunnel(this))
@@ -143,8 +136,7 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             runCatching {
                 entities.add(parseVkTurn(this))
             }
-        } else if (startsWith("sq://", ignoreCase = true) || startsWith("shadowquic://", ignoreCase = true)
-            && shadowQUICEnabled) {
+        } else if (startsWith("sq://", ignoreCase = true) || startsWith("shadowquic://", ignoreCase = true)) {
             runCatching {
                 entities.add(parseShadowQUIC(this))
             }

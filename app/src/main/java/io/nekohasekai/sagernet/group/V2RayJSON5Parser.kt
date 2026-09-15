@@ -35,7 +35,10 @@ import io.nekohasekai.sagernet.fmt.v2ray.supportedQuicSecurity
 import io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
 import io.nekohasekai.sagernet.fmt.wireguard.putAmneziaOption
 import io.nekohasekai.sagernet.ktx.*
+import libexclavecore.Libexclavecore
+import java.io.ByteArrayOutputStream
 import kotlin.io.encoding.Base64
+import kotlin.uuid.Uuid
 
 private val V2RAY5_AMNEZIA_WG_OPTION_KEYS = listOf("jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4", "i1", "i2", "i3", "i4", "i5")
 
@@ -142,21 +145,20 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                                     }
                                 }
                                 (tlsConfig.getByteArrayArray("pinnedPeerCertificateChainSha256")
-                                    ?: tlsConfig.getByteArrayArray("pinned_peer_certificate_chain_sha256"))?.also {
+                                    ?: tlsConfig.getByteArrayArray("pinned_peer_certificate_chain_sha256"))?.takeIf { it.isNotEmpty() }?.also {
                                     v2rayBean.pinnedPeerCertificateChainSha256 = it.joinToString("\n") { Base64.encode(it) }
                                     (tlsConfig.getBoolean("allowInsecureIfPinnedPeerCertificate")
                                         ?: tlsConfig.getBoolean("allow_insecure_if_pinned_peer_certificate"))?.also { allowInsecure ->
                                         v2rayBean.allowInsecure = allowInsecure
                                     }
                                 }
-                                if (v2rayBean is VLESSBean || v2rayBean is TrojanBean) {
-                                    // Only parse ECH for shit VLESS or Trojan free nodes
+                                if (v2rayBean is VLESSBean || v2rayBean is TrojanBean || v2rayBean is VMessBean) {
                                     tlsConfig.getString("echDohServer")?.also {
                                         v2rayBean.echEnabled = true
                                     }
                                     tlsConfig.getString("echConfig")?.also {
                                         v2rayBean.echEnabled = true
-                                        v2rayBean.echConfig = it
+                                        v2rayBean.echConfigList = it
                                     }
                                 }
                             }
@@ -380,13 +382,13 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                     "vmess" -> {
                         v2rayBean as VMessBean
                         settings.getString("uuid")?.also {
-                            v2rayBean.uuid = it
+                            v2rayBean.uuid = parseV2RayUUID(it)
                         }
                     }
                     "vless" -> {
                         v2rayBean as VLESSBean
                         settings.getString("uuid")?.also {
-                            v2rayBean.uuid = it
+                            v2rayBean.uuid = parseV2RayUUID(it)
                         }
                     }
                     "shadowsocks2022" -> {
@@ -424,6 +426,13 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                     (securitySettings.getString("serverName")
                         ?: securitySettings.getString("server_name"))?.also {
                         hysteria2Bean.sni = it
+                    }
+                    securitySettings.getString("echDohServer")?.also {
+                        hysteria2Bean.echEnabled = true
+                    }
+                    securitySettings.getString("echConfig")?.also {
+                        hysteria2Bean.echEnabled = true
+                        hysteria2Bean.echConfigList = it
                     }
                 }
                 streamSettings.getObject("transportSettings")?.also { transportSettings ->
@@ -476,8 +485,13 @@ fun parseV2Ray5Outbound(outbound: JsonObject): List<AbstractBean> {
                             peerPreSharedKey = peer.getString("preshared_key") ?: peer.getString("presharedKey")
                             keepaliveInterval = peer.getInt("persistent_keepalive_interval") ?: peer.getInt("persistentKeepaliveInterval")
                             peer.getString("endpoint")?.also {
-                                serverAddress = it.substringBeforeLast(":").removePrefix("[").removeSuffix("]")
-                                serverPort = it.substringAfterLast(":").toIntOrNull() ?: return listOf()
+                                try {
+                                    val hostPort = Libexclavecore.splitHostPort(it)
+                                    serverAddress = hostPort.host
+                                    serverPort = hostPort.port
+                                } catch (_: Exception) {
+                                    return listOf()
+                                }
                             }
                         })
                     }
@@ -553,4 +567,24 @@ private fun JsonObject.getByteArrayArray(key: String): Array<ByteArray>? {
         }
     }
     return ret.toTypedArray()
+}
+
+private fun parseV2RayUUID(str: String): String? {
+    if (str.length < 32) {
+        return null
+    }
+    // https://github.com/v2fly/v2ray-core/blob/3861a919016991f2a2b65e460bcec18652e35a1e/common/uuid/uuid.go#L64-L88
+    var text = str
+    val uuid = ByteArrayOutputStream()
+    for (byteGroup in listOf(8, 4, 4, 4, 12)) {
+        if (text[0] == '-') {
+            text = text.substring(1)
+        }
+        if (text.length < byteGroup) {
+            return null
+        }
+        uuid.write(text.substring(0, byteGroup).hexToByteArray())
+        text = text.substring(byteGroup)
+    }
+    return Uuid.fromByteArray(uuid.toByteArray()).toHexDashString()
 }
