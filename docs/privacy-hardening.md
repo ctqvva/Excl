@@ -42,6 +42,7 @@ The app now exposes a dedicated privacy section with these controls enabled by d
 - Generated local inbounds stay on loopback even if the legacy LAN-access setting is enabled.
 - VPN mode does not inject the local HTTP proxy when privacy hardening is enabled.
 - Custom configs have `api` stripped, non-`tun` inbounds forced to loopback, and custom `socks` / `mixed` inbounds hardened.
+- ByeByeDPI profiles always bind 127.0.0.1 on an ephemeral port; custom `--ip` / `-i` options in command lines are stripped at argv build time.
 - Privacy bad-app packages are always excluded from the VPN at the OS `VpnService.Builder` layer.
 - `builder.allowBypass()` is blocked by default.
 
