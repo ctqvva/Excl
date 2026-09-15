@@ -63,11 +63,20 @@ bindings), `plugin/naive` + `plugin/shadowquic` (**git submodules**),
 
 ## Submodules & generated files
 
-- `plugin/naive/...` and `plugin/shadowquic/...` are submodule checkouts.
+- `plugin/naive/...` (and any future submodules) are submodule checkouts.
   Don’t bump pins casually; drift shows as `MM` — reset with
   `git submodule update --checkout -- <paths>` unless a bump is the task.
-- Room schema `app/schemas/…/36.json` regenerates when entities change —
-  always commit it together with the entity change.
+- Partial clone caveat: this repo resolves `upstream` lazily
+  (`blob:none`), and submodule commits cannot be fetched from the
+  superproject promisor (`not our ref`). If a merge dies fetching a
+  submodule SHA, temporarily link the submodule stores, merge, then
+  remove the file again:
+  `printf '%s\n' "$PWD/.git/modules/<mod>/objects" \
+    >> .git/objects/info/alternates` … `rm .git/objects/info/alternates`.
+- Room schema `app/schemas/…/*.json` regenerates when entities change —
+  always commit it together with the entity change. If the identityHash
+  looks stale, run `./gradlew :app:kspOssDebugKotlin` and cross-check it
+  against the hash in the generated `SagerDatabase_Impl.kt`.
 - `version.properties` + `app/.../aboutlibraries*` are release chores;
   don’t hand-edit them inside feature work.
 
