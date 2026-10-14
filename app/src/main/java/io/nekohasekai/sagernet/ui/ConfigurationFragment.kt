@@ -40,6 +40,7 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -54,6 +55,7 @@ import io.nekohasekai.sagernet.aidl.TrafficStats
 import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.test.V2RayTestInstance
+import io.nekohasekai.sagernet.bg.test.ProfileTestResults
 import io.nekohasekai.sagernet.database.*
 import io.nekohasekai.sagernet.databinding.LayoutProfileBinding
 import io.nekohasekai.sagernet.databinding.LayoutProfileListBinding
@@ -192,6 +194,11 @@ class ConfigurationFragment @JvmOverloads constructor(
         GroupManager.addListener(adapter)
 
         groupPager.adapter = adapter
+        viewLifecycleOwner.lifecycleScope.launch {
+            ProfileTestResults.changes.collect {
+                adapter.groupFragments.values.forEach { it.adapter.notifyDataSetChanged() }
+            }
+        }
         groupPager.offscreenPageLimit = 2
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -563,6 +570,8 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_connection_test_clear_results -> {
                 runOnDefaultDispatcher {
                     val profiles = SagerDatabase.proxyDao.getByGroup(DataStore.currentGroupId())
+                    ProfileTestResults.clear(profiles.map { it.id })
+                    GroupManager.postReload(DataStore.currentGroupId())
                     val toClear = mutableListOf<ProxyEntity>()
                     if (profiles.isNotEmpty()) for (profile in profiles) {
                         if (profile.status != 0) {
@@ -679,6 +688,14 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             R.id.action_connection_url_test -> {
                 urlTest()
+            }
+            R.id.action_profile_country_test, R.id.action_profile_speed_test -> {
+                ProfileTestDialog.create(groupId = selectedGroup.id, speed = item.itemId == R.id.action_profile_speed_test)
+                    .show(childFragmentManager, "profile-tests")
+            }
+            R.id.action_profile_selected_test -> {
+                if (DataStore.selectedProxy > 0) ProfileTestDialog.create(profileId = DataStore.selectedProxy)
+                    .show(childFragmentManager, "profile-tests")
             }
             R.id.action_update_subscription -> {
                 runOnDefaultDispatcher {
@@ -1554,6 +1571,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             val profileType: TextView = view.findViewById(R.id.profile_type)
             val profileAddress: TextView = view.findViewById(R.id.profile_address)
             val profileStatus: TextView = view.findViewById(R.id.profile_status)
+            val profileDiagnostics: TextView = view.findViewById(R.id.profile_diagnostics)
 
             val trafficText: TextView = view.findViewById(R.id.traffic_text)
             val selectedView: LinearLayout = view.findViewById(R.id.selected_view)
@@ -1606,6 +1624,15 @@ class ConfigurationFragment @JvmOverloads constructor(
 
                 profileName.text = proxyEntity.displayName()
                 profileType.text = proxyEntity.displayType()
+                val diagnostics = ProfileTestResults.get(proxyEntity)
+                profileDiagnostics.isVisible = diagnostics != null
+                profileDiagnostics.text = diagnostics?.let {
+                    ProfileTestDialog.summary(view.context, it) + "\n" + ProfileTestDialog.lastChecked(view.context, it)
+                }
+                profileDiagnostics.setOnClickListener {
+                    if (!parent.select) ProfileTestDialog.create(profileId = proxyEntity.id, speed = true)
+                        .show(parent.childFragmentManager, "profile-tests")
+                }
 
                 var rx = proxyEntity.rx
                 var tx = proxyEntity.tx
@@ -1878,6 +1905,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             override fun onMenuItemClick(item: MenuItem): Boolean {
                 try {
                     when (item.itemId) {
+                        R.id.action_profile_country_test, R.id.action_profile_speed_test -> {
+                            ProfileTestDialog.create(profileId = entity.id, speed = item.itemId == R.id.action_profile_speed_test)
+                                .also { test -> parent?.childFragmentManager?.let { test.show(it, "profile-tests") } }
+                        }
                         R.id.action_qr -> {
                             if (entity.wgBean != null) {
                                 entity.wgBean?.toConf()?.let { showCode(it) }

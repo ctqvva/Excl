@@ -110,15 +110,25 @@ object ProfileManager {
     }
 
     suspend fun updateProfile(profile: ProxyEntity) {
+        invalidateChangedTests(listOf(profile))
         SagerDatabase.proxyDao.updateProxy(profile)
         iterator { onUpdated(profile) }
     }
 
     suspend fun updateProfile(profiles: List<ProxyEntity>) {
+        invalidateChangedTests(profiles)
         SagerDatabase.proxyDao.updateProxy(profiles)
         profiles.forEach {
             iterator { onUpdated(it) }
         }
+    }
+
+    private fun invalidateChangedTests(profiles: List<ProxyEntity>) {
+        if (profiles.any { profile ->
+            val previous = getProfile(profile.id)
+            previous != null && !io.nekohasekai.sagernet.fmt.KryoConverters.serialize(previous.requireBean())
+                .contentEquals(io.nekohasekai.sagernet.fmt.KryoConverters.serialize(profile.requireBean()))
+        }) io.nekohasekai.sagernet.bg.test.ProfileTestResults.invalidateAll()
     }
 
     suspend fun deleteProfile(groupId: Long, profileId: Long) {
@@ -133,6 +143,7 @@ object ProfileManager {
     }
 
     suspend fun deleteProfile2(groupId: Long, profileId: Long) {
+        io.nekohasekai.sagernet.bg.test.ProfileTestResults.invalidateAll()
         if (SagerDatabase.proxyDao.deleteById(profileId) == 0) return
         if (DataStore.selectedProxy == profileId) {
             DataStore.selectedProxy = 0L

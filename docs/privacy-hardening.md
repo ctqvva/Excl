@@ -75,3 +75,10 @@ For every release candidate:
   and Tasker actions must be recreated once after that change.
 - API-only `vpn://` provisioning links still need online key provisioning.
 - A full release gate still needs device-level validation with the detector apps above. Static review alone is not enough for this class of issue.
+
+## Manual profile diagnostics
+
+Country and speed tests dial the tested native instance directly and open no
+local listener. The sheet identifies Cloudflare and the 10 MiB speed-test budget
+before the user starts. Requests have deadlines and native cancellation; failure
+does not select a direct-network fallback. See [profile tests](profile-tests.md).

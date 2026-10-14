@@ -109,6 +109,10 @@ object GroupManager {
     }
 
     suspend fun updateGroup(group: ProxyGroup, reconfigureUpdater: Boolean = true) {
+        val previous = SagerDatabase.groupDao.getById(group.id)
+        if (previous?.frontProxy != group.frontProxy || previous?.landingProxy != group.landingProxy) {
+            io.nekohasekai.sagernet.bg.test.ProfileTestResults.invalidateAll()
+        }
         SagerDatabase.groupDao.updateGroup(group)
         iterator { groupUpdated(group) }
         if (reconfigureUpdater && group.type == GroupType.SUBSCRIPTION && group.subscription!!.autoUpdate) {
