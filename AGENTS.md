@@ -7,13 +7,15 @@ proxy inbounds, injected HTTP proxies, custom-config listeners, or the VPN
 bypass API. Guiding principle: make the VPN non-exploitable, not invisible
 (`tun0` visibility itself is unpatchable app-side). Fork identity lives in
 code: app name `Excl`, `Excl` log tags, Balancer / AmneziaWG / VkTurn
-support, privacy-hardening defaults. There is no unit test suite and no
-configured linter; verification means the compile/build commands below.
+support, privacy-hardening defaults. There are focused profile-test workflow
+regressions and no configured linter; verification uses those tests plus the
+compile/build commands below.
 
 ## Commands (run from repo root)
 
 ```sh
 git status --short && git log --oneline --graph -8 && git submodule status
+./gradlew :app:testOssDebugUnitTest   # profile-test availability and cancellation regressions
 ./gradlew :app:kspOssDebugKotlin      # regenerate Room schema in app/schemas
 ./gradlew :app:compileOssDebugKotlin  # fastest real verification (needs core AAR)
 ./gradlew :app:assembleOssDebug       # full debug APK
@@ -32,9 +34,10 @@ Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
 - `library/proto`, `library/proto-stub`, `plugin/api`, `plugin/naive` —
   Gradle modules; `plugin/naive/src/main/jni/naiveproxy` is a git submodule.
 - `app/schemas/…/*.json` — Room schema exports. Commit with the entity change.
-- URL tests also check the exit country; speed tests share the existing test dialog.
-  Both actions are in the list menu and profile long-press menu. Manual groups use
-  drag handles for reordering. See `docs/profile-tests.md`.
+- Profile tests show live phases/results in the main cards, with batch progress
+  in the toolbar and Cancel tests in the list menu. URL availability gates country
+  and speed requests; speed tests only include available profiles and recheck them.
+  Both actions are also in profile long-press menus. See `docs/profile-tests.md`.
 - `docs/privacy-hardening.md`, `docs/stealth-build.md` — read before touching
   those areas.
 - Excl-local subsystems (no upstream counterpart — never "align" them away):

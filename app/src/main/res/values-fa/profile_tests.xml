@@ -2,7 +2,6 @@
 <resources>
     <string name="profile_test_country">بررسی کشور</string>
     <string name="profile_test_speed">آزمون سرعت</string>
-    <string name="profile_test_speed_note">کشور را بررسی می‌کند، سپس برای هر نمایه با Cloudflare مقدار 8 MiB دریافت و 2 MiB ارسال می‌کند. آزمون‌ها یکی‌یکی اجرا می‌شوند؛ نتایج به شبکه و سرور آزمون بستگی دارند.</string>
     <string name="profile_test_checking_country">در حال بررسی کشور…</string>
     <string name="profile_test_downloading">در حال اندازه‌گیری دریافت…</string>
     <string name="profile_test_uploading">در حال اندازه‌گیری ارسال…</string>
@@ -11,6 +10,7 @@
     <string name="profile_test_upload">ارسال</string>
     <string name="profile_test_browser_unsupported">هدایت از طریق مرورگر در آزمون نمایه‌ها پشتیبانی نمی‌شود</string>
     <string name="profile_test_no_profiles">نمایه‌ای برای آزمون وجود ندارد</string>
-    <string name="profile_test_results_changed">نمایه‌ها یا نتایج تغییر کرده‌اند. آزمون را دوباره اجرا کنید.</string>
     <string name="profile_test_reorder">برای تغییر ترتیب بکشید</string>
+    <string name="profile_test_cancel">لغو آزمون‌ها</string>
+    <string name="profile_test_need_available">ابتدا آزمون URL را اجرا کنید. آزمون سرعت فقط برای نمایه‌های در دسترس اجرا می‌شود.</string>
 </resources>

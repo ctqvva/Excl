@@ -20,7 +20,6 @@
 package io.nekohasekai.sagernet.ui
 
 import android.app.Activity
-import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -55,14 +54,12 @@ import io.nekohasekai.sagernet.aidl.TrafficStats
 import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.test.ProfileTestRunner
+import io.nekohasekai.sagernet.bg.test.ProfileTestState
 import io.nekohasekai.sagernet.bg.test.ProfileTestResults
 import io.nekohasekai.sagernet.database.*
-import io.nekohasekai.sagernet.databinding.LayoutProfileBinding
 import io.nekohasekai.sagernet.databinding.LayoutProfileListBinding
-import io.nekohasekai.sagernet.databinding.LayoutProgressListBinding
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.exportBackup
-import io.nekohasekai.sagernet.fmt.v2ray.StandardV2RayBean
 import io.nekohasekai.sagernet.fmt.wireguard.toConf
 import io.nekohasekai.sagernet.group.GroupUpdater
 import io.nekohasekai.sagernet.group.Protocols
@@ -78,10 +75,7 @@ import kotlinx.coroutines.sync.withLock
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.zip.ZipInputStream
-import kotlin.concurrent.timerTask
 import io.nekohasekai.sagernet.database.SagerDatabase
-import io.nekohasekai.sagernet.fmt.internal.BalancerBean
-import io.nekohasekai.sagernet.fmt.internal.ChainBean
 import io.nekohasekai.sagernet.utils.FormatFileSizeCompat
 
 @android.annotation.SuppressLint("ClickableViewAccessibility")
@@ -195,10 +189,17 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         groupPager.adapter = adapter
         viewLifecycleOwner.lifecycleScope.launch {
-            ProfileTestResults.changes.collect {
-                adapter.groupFragments.values.forEach { it.adapter.notifyDataSetChanged() }
+            ProfileTestResults.changes.collect { epoch ->
+                if (profileTestEpoch != null && profileTestEpoch != epoch) profileTestJob?.cancel()
+                adapter.groupFragments.values.forEach { it.refreshTestCard(-1L) }
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            ProfileTestState.updates.collect { id ->
+                adapter.groupFragments.values.forEach { it.refreshTestCard(id) }
+            }
+        }
+        updateTestMenu()
         groupPager.offscreenPageLimit = 2
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -568,22 +569,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             }
             R.id.action_connection_test_clear_results -> {
+                val groupId = selectedGroup.id
+                profileTestJob?.cancel()
                 runOnDefaultDispatcher {
-                    val profiles = SagerDatabase.proxyDao.getByGroup(DataStore.currentGroupId())
-                    ProfileTestResults.clear(profiles.map { it.id })
-                    GroupManager.postReload(DataStore.currentGroupId())
-                    val toClear = mutableListOf<ProxyEntity>()
-                    if (profiles.isNotEmpty()) for (profile in profiles) {
-                        if (profile.status != 0) {
-                            profile.status = 0
-                            profile.ping = 0
-                            profile.error = null
-                            toClear.add(profile)
-                        }
-                    }
-                    if (toClear.isNotEmpty()) {
-                        ProfileManager.updateProfile(toClear)
-                    }
+                    ProfileTestResults.clear(SagerDatabase.proxyDao.getIdsByGroup(groupId))
+                    SagerDatabase.proxyDao.clearTestResults(groupId)
+                    GroupManager.postReload(groupId)
                 }
             }
             R.id.action_remove_duplicate -> {
@@ -692,6 +683,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_profile_speed_test -> {
                 urlTest(speed = true)
             }
+            R.id.action_profile_test_cancel -> {
+                profileTestJob?.cancel()
+                updateTestMenu()
+            }
             R.id.action_update_subscription -> {
                 runOnDefaultDispatcher {
                     val currentGroup = DataStore.currentGroup()
@@ -708,245 +703,132 @@ class ConfigurationFragment @JvmOverloads constructor(
         return true
     }
 
-    inner class TestDialog {
-        val binding = LayoutProgressListBinding.inflate(layoutInflater)
-        val builder = MaterialAlertDialogBuilder(requireContext()).setView(binding.root)
-            .setNegativeButton(android.R.string.cancel) { _, _ ->
-                close()
-                cancel()
-            }
-            .setNeutralButton(" ", null)
-            .setCancelable(false)
-        lateinit var cancel: () -> Unit
-        val results = ArrayList<ProxyEntity>()
-        val notes = HashMap<Long, String>()
-        val adapter = TestAdapter()
-        val scrollTimer = Timer("insert timer")
-        var currentTask: TimerTask? = null
+    private var profileTestJob: Job? = null
+    private var profileTestEpoch: Long? = null
+    private val testsRunning get() = profileTestJob?.isCompleted == false
 
-        fun insert(profile: ProxyEntity) {
-            binding.listView.post {
-                results.add(profile)
-                val index = results.size - 1
-                adapter.notifyItemInserted(index)
-                try {
-                    scrollTimer.schedule(timerTask {
-                        binding.listView.post {
-                            if (currentTask == this) binding.listView.smoothScrollToPosition(index)
-                        }
-                    }.also {
-                        currentTask?.cancel()
-                        currentTask = it
-                    }, 500L)
-                } catch (ignored: Exception) {
-                }
-            }
+    private fun updateTestMenu() {
+        toolbar.menu.findItem(R.id.action_connection_url_test)?.isEnabled = !testsRunning
+        toolbar.menu.findItem(R.id.action_profile_speed_test)?.apply {
+            isEnabled = !testsRunning
+            title = getString(R.string.profile_test_speed) + " (10 MiB)"
         }
-
-        fun update(profile: ProxyEntity) {
-            binding.listView.post {
-                val index = results.indexOfFirst { it.id == profile.id }
-                if (index >= 0) adapter.notifyItemChanged(index)
-            }
+        toolbar.menu.findItem(R.id.action_profile_test_cancel)?.apply {
+            isVisible = testsRunning
+            isEnabled = profileTestJob?.isActive == true
         }
-
-        fun close() {
-            try {
-                scrollTimer.schedule(timerTask {
-                    scrollTimer.cancel()
-                }, 0)
-            } catch (ignored: Exception) {
-            }
-        }
-
-        init {
-            binding.listView.layoutManager = FixedLinearLayoutManager(binding.listView)
-            binding.listView.itemAnimator = DefaultItemAnimator()
-            binding.listView.adapter = adapter
-        }
-
-        inner class TestAdapter : RecyclerView.Adapter<TestResultHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-                TestResultHolder(LayoutProfileBinding.inflate(layoutInflater, parent, false))
-
-            override fun onBindViewHolder(holder: TestResultHolder, position: Int) {
-                holder.bind(results[position])
-            }
-
-            override fun getItemCount() = results.size
-        }
-
-        inner class TestResultHolder(val binding: LayoutProfileBinding) : RecyclerView.ViewHolder(
-            binding.root
-        ) {
-            init {
-                binding.edit.isGone = true
-                binding.share.isGone = true
-                binding.deleteIcon.isGone = true
-                binding.dragHandle.isGone = true
-            }
-
-            fun bind(profile: ProxyEntity) {
-                binding.profileName.text = profile.displayName()
-                binding.profileType.text = listOf(profile.displayType(), notes[profile.id].orEmpty())
-                    .filter { it.isNotEmpty() }.joinToString("\n")
-
-                when (profile.status) {
-                    -1 -> {
-                        binding.profileStatus.text = profile.error
-                        binding.profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
-                    }
-                    0 -> {
-                        binding.profileStatus.setText(R.string.connection_test_testing)
-                        binding.profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
-                    }
-                    1 -> {
-                        binding.profileStatus.text = getString(R.string.available, profile.ping)
-                        binding.profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
-                    }
-                    2 -> {
-                        binding.profileStatus.text = profile.error
-                        binding.profileStatus.setTextColor(requireContext().getColour(R.color.material_red_500))
-                    }
-                    3 -> {
-                        binding.profileStatus.setText(R.string.unavailable)
-                        binding.profileStatus.setTextColor(requireContext().getColour(R.color.material_red_500))
-                    }
-                }
-
-                binding.profileStatus.text = ProfileTestResults.statusText(
-                    requireContext(), profile, binding.profileStatus.text.toString()
-                )
-                binding.profileStatus.gravity = Gravity.END
-
-                if (profile.status == 3) {
-                    binding.content.setOnClickListener {
-                        alert(profile.error ?: "<?>").show()
-                    }
-                } else {
-                    binding.content.setOnClickListener {}
-                }
-            }
-        }
-
     }
 
-    private var profileTestJob: Job? = null
-
-    /** Existing list test dialog, also used by a profile's long-press actions. */
+    /** Test phases and results appear on the original cards; no modal test UI. */
     fun urlTest(profileId: Long? = null, speed: Boolean = false) {
-        if (profileTestJob?.isActive == true) return
+        if (testsRunning) return
         val groupId = selectedGroup.id
-        val test = TestDialog()
-        test.builder.setTitle(if (speed) R.string.profile_test_speed else R.string.connection_test_url_test)
-        if (speed) test.builder.setMessage(R.string.profile_test_speed_note)
-        val dialog = test.builder.show()
-        dialog.getButton(DialogInterface.BUTTON_NEUTRAL).isEnabled = false
-        test.binding.progressCircular.setProgressCompat(0, false)
-        test.cancel = { profileTestJob?.cancel() }
+        val label = getString(if (speed) R.string.profile_test_speed else R.string.connection_test_url_test)
+        val previousSubtitle = toolbar.subtitle
+        val runId = ProfileTestState.nextRunId()
+        val epoch = ProfileTestResults.changes.value
+        profileTestEpoch = epoch
 
-        profileTestJob = viewLifecycleOwner.lifecycleScope.launch {
+        val batch = viewLifecycleOwner.lifecycleScope.launch(start = CoroutineStart.LAZY) {
             try {
+                updateTestMenu()
                 val profiles = withContext(Dispatchers.IO) {
-                    if (profileId != null) listOfNotNull(ProfileManager.getProfile(profileId))
+                    val candidates = if (profileId != null) listOfNotNull(ProfileManager.getProfile(profileId))
                     else SagerDatabase.proxyDao.getByGroup(groupId)
+                    if (speed) candidates.filter { it.status == 1 } else candidates
+                }
+                if (profiles.isEmpty()) {
+                    snackbar(if (speed) R.string.profile_test_need_available else R.string.profile_test_no_profiles).show()
+                    return@launch
                 }
                 val pending = ConcurrentLinkedQueue(profiles)
-                val epoch = ProfileTestResults.changes.value
                 var finished = 0
-                dialog.getButton(DialogInterface.BUTTON_NEUTRAL).text = if (profiles.isEmpty()) {
-                    getString(R.string.profile_test_no_profiles)
-                } else getString(R.string.profile_test_progress, 0, profiles.size)
+                toolbar.subtitle = "$label · ${getString(R.string.profile_test_progress, 0, profiles.size)}"
 
-                suspend fun saveLatency(profile: ProxyEntity) = withContext(Dispatchers.IO) {
+                suspend fun saveLatency(profile: ProxyEntity): Boolean = withContext(Dispatchers.IO) {
                     ensureActive()
-                    val current = ProfileManager.getProfile(profile.id) ?: return@withContext
-                    if (ProfileTestResults.changes.value != epoch ||
-                        ProfileTestResults.fingerprint(current) != ProfileTestResults.fingerprint(profile)
-                    ) return@withContext
-                    // Keep current traffic and configuration; only test fields belong to this run.
-                    SagerDatabase.proxyDao.updateTestResult(profile.id, profile.status, profile.ping, profile.error)
-                    ProfileManager.postUpdate(profile.id)
+                    val updated = ProfileTestResults.commitIfCurrent(epoch) {
+                        val current = ProfileManager.getProfile(profile.id)
+                        if (current == null || current.groupId != profile.groupId ||
+                            ProfileTestResults.fingerprint(current) != ProfileTestResults.fingerprint(profile)
+                        ) false
+                        else SagerDatabase.proxyDao.updateTestResult(profile.id, profile.status, profile.ping, profile.error) > 0
+                    }
+                    if (updated) ProfileManager.postUpdate(profile.id)
+                    updated
                 }
 
-                List(if (speed) 1 else 6) {
-                    launch {
-                        while (isActive) {
-                            val profile = pending.poll() ?: break
-                            val errors = ArrayList<String>()
-                            if (!speed) { profile.status = 0; profile.error = null }
-                            test.insert(profile)
-                            try {
-                                val supported = withContext(Dispatchers.IO) { !ProfileTestRunner.usesBrowserForwarder(profile) }
-                                if (!supported) throw UnsupportedOperationException(getString(R.string.profile_test_browser_unsupported))
-                                ProfileTestRunner.run(profile, speed,
-                                    onPhase = { phase -> withContext(Dispatchers.Main) {
-                                        test.notes[profile.id] = getString(when (phase) {
-                                            ProfileTestRunner.Phase.URL -> R.string.connection_test_testing
-                                            ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_checking_country
-                                            ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_downloading
-                                            ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_uploading
-                                        })
-                                        test.update(profile)
-                                    } },
-                                    onResult = { result ->
-                                        ensureActive()
-                                        if (!ProfileTestResults.put(profile.id, result, epoch)) {
-                                            error(getString(R.string.profile_test_results_changed))
-                                        }
-                                        ProfileManager.postUpdate(profile.id)
-                                        withContext(Dispatchers.Main) { test.update(profile) }
-                                    },
-                                    onLatency = { ping -> withContext(Dispatchers.Main) {
-                                        profile.status = 1
-                                        profile.ping = ping
-                                        profile.error = null
-                                        saveLatency(profile)
-                                        test.update(profile)
-                                    } },
-                                    onError = { phase, error -> withContext(Dispatchers.Main) {
-                                        val label = getString(when (phase) {
-                                            ProfileTestRunner.Phase.URL -> R.string.connection_test_url_test
-                                            ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_country
-                                            ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_download
-                                            ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_upload
-                                        })
-                                        errors.add("$label: ${error.readableMessage}")
-                                        if (phase == ProfileTestRunner.Phase.URL) {
-                                            profile.status = 3
-                                            profile.error = error.readableMessage
-                                            saveLatency(profile)
-                                        }
-                                    } },
-                                )
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                errors.add(e.readableMessage)
-                                if (!speed) {
+                coroutineScope {
+                    List(if (speed) 1 else 6) {
+                        launch {
+                            while (isActive) {
+                                val profile = pending.poll() ?: break
+                                var failure: ProfileTestRunner.Phase? = null
+                                try {
+                                    val current = withContext(Dispatchers.IO) { ProfileManager.getProfile(profile.id) }
+                                    if (current == null || current.groupId != profile.groupId ||
+                                        ProfileTestResults.fingerprint(current) != ProfileTestResults.fingerprint(profile) ||
+                                        (speed && current.status != 1) ||
+                                        adapter.groupFragments[profile.groupId]?.isPendingRemoval(profile.id) == true
+                                    ) continue
+                                    if (ProfileTestResults.changes.value != epoch) throw CancellationException("Test results invalidated")
+                                    ProfileTestState.begin(profile.id, runId)
+                                    val supported = withContext(Dispatchers.IO) { !ProfileTestRunner.usesBrowserForwarder(profile) }
+                                    if (!supported) throw UnsupportedOperationException(getString(R.string.profile_test_browser_unsupported))
+                                    ProfileTestRunner.run(profile, speed,
+                                        onPhase = { phase -> withContext(Dispatchers.Main) {
+                                            ProfileTestState.phase(profile.id, runId, phase)
+                                        } },
+                                        onResult = { result ->
+                                            ensureActive()
+                                            if (!ProfileTestResults.put(profile.id, result, epoch)) {
+                                                throw CancellationException("Test results invalidated")
+                                            }
+                                            ProfileManager.postUpdate(profile.id)
+                                        },
+                                        onLatency = { ping -> withContext(Dispatchers.Main) {
+                                            profile.status = 1
+                                            profile.ping = ping
+                                            profile.error = null
+                                            if (!saveLatency(profile)) throw CancellationException("Profile changed")
+                                        } },
+                                        onError = { phase, error -> withContext(Dispatchers.Main) {
+                                            failure = phase
+                                            if (phase == ProfileTestRunner.Phase.URL) {
+                                                profile.status = 3
+                                                profile.error = error.readableMessage
+                                                saveLatency(profile)
+                                            }
+                                        } },
+                                    )
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
                                     profile.status = if (e is PluginManager.PluginNotFoundException || e is UnsupportedOperationException) -1 else 3
                                     profile.error = e.readableMessage
                                     saveLatency(profile)
+                                } finally {
+                                    ProfileTestState.finish(profile.id, runId,
+                                        failure?.takeUnless { it == ProfileTestRunner.Phase.URL })
+                                    finished++
+                                    if (isActive) toolbar.subtitle = "$label · ${getString(R.string.profile_test_progress, finished, profiles.size)}"
                                 }
                             }
-                            test.notes[profile.id] = errors.joinToString("\n")
-                            test.update(profile)
-                            finished++
-                            test.binding.progressCircular.setProgressCompat(
-                                finished * 100 / profiles.size, true
-                            )
-                            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).text =
-                                getString(R.string.profile_test_progress, finished, profiles.size)
                         }
-                    }
-                }.joinAll()
-                test.binding.progressCircular.isGone = true
-                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setText(android.R.string.ok)
+                    }.joinAll()
+                }
             } finally {
-                test.close()
-                if (!isActive) dialog.dismiss()
+                // coroutineScope drains cancelled native workers before restoring the controls.
+                if (profileTestEpoch == epoch) profileTestEpoch = null
+                profileTestJob = null
+                if (view != null) {
+                    toolbar.subtitle = previousSubtitle
+                    updateTestMenu()
+                }
             }
         }
+        profileTestJob = batch
+        batch.start()
     }
 
     override fun onDestroyView() {
@@ -1138,6 +1020,17 @@ class ConfigurationFragment @JvmOverloads constructor(
                 return ((activity as? MainActivity)
                     ?: return false).state.let { it.canStop || it == BaseService.State.Stopped }
             }
+
+        fun refreshTestCard(profileId: Long) {
+            if (!::adapter.isInitialized) return
+            if (profileId < 0) adapter.notifyDataSetChanged()
+            else {
+                val index = adapter.configurationIdList.indexOf(profileId)
+                if (index >= 0) adapter.notifyItemChanged(index)
+            }
+        }
+
+        fun isPendingRemoval(profileId: Long) = ::adapter.isInitialized && adapter.pendingDeletedIds.contains(profileId)
 
         private var actionButtonPressed = false
         private var dragHelper: ItemTouchHelper? = null
@@ -1651,6 +1544,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                 view.setOnLongClickListener(if (parent.select) null else View.OnLongClickListener {
                     PopupMenu(requireContext(), view).apply {
                         menuInflater.inflate(R.menu.profile_test_menu, menu)
+                        menu.findItem(R.id.action_connection_url_test).isEnabled = !parent.testsRunning
+                        menu.findItem(R.id.action_profile_speed_test).apply {
+                            isEnabled = !parent.testsRunning && proxyEntity.status == 1
+                            title = getString(R.string.profile_test_speed) + " (10 MiB)"
+                        }
                         setOnMenuItemClickListener { item ->
                             when (item.itemId) {
                                 R.id.action_connection_url_test -> parent.urlTest(proxyEntity.id)
@@ -1802,6 +1700,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                     view.context, proxyEntity, profileStatus.text.toString()
                 )
                 profileStatus.gravity = Gravity.END
+                if (ProfileTestState.get(proxyEntity.id)?.phase != null) {
+                    profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
+                }
 
                 editButton.setOnClickListener {
                     proxyEntity.settingIntent(it.context, proxyGroup.type == GroupType.SUBSCRIPTION)?.let {

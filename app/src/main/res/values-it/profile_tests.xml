@@ -2,7 +2,6 @@
 <resources>
     <string name="profile_test_country">Verifica paese</string>
     <string name="profile_test_speed">Test di velocità</string>
-    <string name="profile_test_speed_note">Verifica il paese, poi scarica 8 MiB e carica 2 MiB per profilo con Cloudflare. I test vengono eseguiti uno alla volta; i risultati dipendono dalla rete e dal server di test.</string>
     <string name="profile_test_checking_country">Verifica del paese…</string>
     <string name="profile_test_downloading">Misurazione download…</string>
     <string name="profile_test_uploading">Misurazione upload…</string>
@@ -11,6 +10,7 @@
     <string name="profile_test_upload">Upload</string>
     <string name="profile_test_browser_unsupported">L’inoltro tramite browser non è supportato dai test dei profili</string>
     <string name="profile_test_no_profiles">Nessun profilo da testare</string>
-    <string name="profile_test_results_changed">I profili o i risultati sono cambiati. Esegui nuovamente il test.</string>
     <string name="profile_test_reorder">Trascina per riordinare</string>
+    <string name="profile_test_cancel">Annulla test</string>
+    <string name="profile_test_need_available">Esegui prima un test URL. I test di velocità vengono eseguiti solo sui profili disponibili.</string>
 </resources>

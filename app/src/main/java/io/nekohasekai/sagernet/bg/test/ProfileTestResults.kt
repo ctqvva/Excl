@@ -52,24 +52,48 @@ object ProfileTestResults {
         return true
     }
 
+    // Serialize latency commits with Clear so a cancelled worker cannot restore test fields.
+    @Synchronized fun commitIfCurrent(epoch: Long, commit: () -> Boolean): Boolean =
+        changes.value == epoch && commit()
+
     fun statusText(context: Context, profile: ProxyEntity, status: String): String {
-        val result = get(profile) ?: return status
-        val flag = result.country.takeIf { it.length == 2 && it.all { ch -> ch in 'A'..'Z' } }
+        val state = ProfileTestState.get(profile.id)
+        if (state?.phase == ProfileTestRunner.Phase.URL) return context.getString(R.string.connection_test_testing)
+        if (profile.status != 1) return status
+        val result = get(profile)
+        val flag = result?.country?.takeIf { it.length == 2 && it.all { ch -> ch in 'A'..'Z' } }
             ?.map { String(Character.toChars(0x1F1E6 + it.code - 'A'.code)) }?.joinToString("").orEmpty()
         val formatter = NumberFormat.getNumberInstance().apply { maximumFractionDigits = 2 }
         fun rate(value: Double) = context.getString(R.string.profile_test_mbps, formatter.format(value / 1_000_000))
-        val rates = listOfNotNull(result.download?.let { "↓ ${rate(it)}" }, result.upload?.let { "↑ ${rate(it)}" })
-        return listOf(listOf(flag, status).filter { it.isNotEmpty() }.joinToString(" "), rates.joinToString(" "))
-            .filter { it.isNotEmpty() }.joinToString("\n")
+        val rates = listOfNotNull(result?.download?.let { "↓ ${rate(it)}" }, result?.upload?.let { "↑ ${rate(it)}" })
+        val phase = when (state?.phase) {
+            ProfileTestRunner.Phase.COUNTRY -> context.getString(R.string.profile_test_checking_country)
+            ProfileTestRunner.Phase.DOWNLOAD -> context.getString(R.string.profile_test_downloading)
+            ProfileTestRunner.Phase.UPLOAD -> context.getString(R.string.profile_test_uploading)
+            else -> ""
+        }
+        val failure = state?.failure?.let {
+            val label = when (it) {
+                ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_country
+                ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_download
+                ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_upload
+                else -> R.string.connection_test_url_test
+            }
+            context.getString(label) + ": " + context.getString(R.string.unavailable)
+        }.orEmpty()
+        return listOf(listOf(flag, status).filter { it.isNotEmpty() }.joinToString(" "),
+            rates.joinToString(" "), phase, failure).filter { it.isNotEmpty() }.joinToString("\n")
     }
 
     @Synchronized fun invalidateAll() {
         preferences.edit().clear().apply()
+        ProfileTestState.clear()
         changes.value++
     }
 
     @Synchronized fun clear(profileIds: List<Long>) {
         preferences.edit().apply { profileIds.forEach { remove(it.toString()) } }.apply()
+        ProfileTestState.clear()
         changes.value++
     }
 }

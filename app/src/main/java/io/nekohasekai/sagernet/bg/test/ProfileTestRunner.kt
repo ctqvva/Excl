@@ -67,37 +67,36 @@ object ProfileTestRunner {
             try {
                 var result = ProfileTestResults.get(profile)
                     ?: ProfileTestResults.Result(ProfileTestResults.fingerprint(profile))
-                result = result.copy(checkedAt = System.currentTimeMillis(), ip = "", country = "",
-                    download = if (speed) null else result.download,
-                    upload = if (speed) null else result.upload)
-                onResult(result)
-                suspend fun <T> measure(phase: Phase, block: () -> T): T? {
-                    onPhase(phase)
-                    return try {
-                        block().also { ensureActive() }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        ensureActive()
-                        pluginError.get()?.let { throw it }
-                        onError(phase, e)
-                        null
-                    }
-                }
-                if (!speed) measure(Phase.URL) { native.urlTest(DataStore.connectionTestURL, 5000) }?.let { onLatency(it) }
-                measure(Phase.COUNTRY) { native.country() }?.let { country ->
-                    result = result.copy(ip = country.ip, country = country.countryCode)
-                    onResult(result)
-                }
-                if (speed) {
-                    measure(Phase.DOWNLOAD) { native.download() }?.let { download ->
+                runProfileMeasurements(
+                    probe = object : ProfileProbeMeasurements {
+                        override fun urlTest() = native.urlTest(DataStore.connectionTestURL, 5000)
+                        override fun country() = native.country().let { it.ip to it.countryCode }
+                        override fun download() = native.download()
+                        override fun upload() = native.upload()
+                    },
+                    speed = speed,
+                    onPhase = onPhase,
+                    onAvailable = { ping ->
+                        onLatency(ping)
+                        result = result.copy(checkedAt = System.currentTimeMillis(), ip = "", country = "",
+                            download = if (speed) null else result.download,
+                            upload = if (speed) null else result.upload)
+                        onResult(result)
+                    },
+                    onCountry = { country ->
+                        result = result.copy(ip = country.first, country = country.second)
+                        onResult(result)
+                    },
+                    onDownload = { download ->
                         result = result.copy(download = download)
                         onResult(result)
-                    }
-                    measure(Phase.UPLOAD) { native.upload() }?.let { upload ->
-                        onResult(result.copy(upload = upload))
-                    }
-                }
+                    },
+                    onUpload = { upload -> onResult(result.copy(upload = upload)) },
+                    onError = { phase, error ->
+                        pluginError.get()?.let { throw it }
+                        onError(phase, error)
+                    },
+                )
                 pluginError.get()?.let { throw it }
             } finally {
                 cancellation.cancelAndJoin()

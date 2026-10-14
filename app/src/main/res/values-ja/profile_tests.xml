@@ -2,7 +2,6 @@
 <resources>
     <string name="profile_test_country">国を確認</string>
     <string name="profile_test_speed">速度テスト</string>
-    <string name="profile_test_speed_note">Cloudflare を使用して国を確認した後、各プロファイルで 8 MiB をダウンロードし、2 MiB をアップロードします。テストは順番に実行され、結果はネットワークとテストサーバーに依存します。</string>
     <string name="profile_test_checking_country">国を確認中…</string>
     <string name="profile_test_downloading">ダウンロードを測定中…</string>
     <string name="profile_test_uploading">アップロードを測定中…</string>
@@ -11,6 +10,7 @@
     <string name="profile_test_upload">アップロード</string>
     <string name="profile_test_browser_unsupported">プロファイルテストではブラウザー転送に対応していません</string>
     <string name="profile_test_no_profiles">テストするプロファイルがありません</string>
-    <string name="profile_test_results_changed">プロファイルまたは結果が変更されました。もう一度テストしてください。</string>
     <string name="profile_test_reorder">ドラッグして並べ替え</string>
+    <string name="profile_test_cancel">テストをキャンセル</string>
+    <string name="profile_test_need_available">まず URL テストを実行してください。速度テストは利用可能なプロファイルでのみ実行されます。</string>
 </resources>

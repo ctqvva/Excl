@@ -131,8 +131,8 @@ object ProfileManager {
 
     private fun testConfigurationChanged(profiles: List<ProxyEntity>): Boolean = profiles.any { profile ->
         val previous = getProfile(profile.id)
-        previous != null && !KryoConverters.serialize(previous.requireBean())
-            .contentEquals(KryoConverters.serialize(profile.requireBean()))
+        previous != null && (previous.groupId != profile.groupId || previous.type != profile.type ||
+            !KryoConverters.serialize(previous.requireBean()).contentEquals(KryoConverters.serialize(profile.requireBean())))
     }
 
     suspend fun deleteProfile(groupId: Long, profileId: Long) {

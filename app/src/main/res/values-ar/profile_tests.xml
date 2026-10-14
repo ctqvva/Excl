@@ -2,7 +2,6 @@
 <resources>
     <string name="profile_test_country">فحص البلد</string>
     <string name="profile_test_speed">اختبار السرعة</string>
-    <string name="profile_test_speed_note">يفحص البلد، ثم ينزّل 8 MiB ويرفع 2 MiB لكل ملف باستخدام Cloudflare. تعمل الاختبارات بالتتابع؛ تعتمد النتائج على الشبكة وخادم الاختبار.</string>
     <string name="profile_test_checking_country">جارٍ فحص البلد…</string>
     <string name="profile_test_downloading">جارٍ قياس التنزيل…</string>
     <string name="profile_test_uploading">جارٍ قياس الرفع…</string>
@@ -11,6 +10,7 @@
     <string name="profile_test_upload">الرفع</string>
     <string name="profile_test_browser_unsupported">إعادة التوجيه عبر المتصفح غير مدعومة في اختبارات الملفات</string>
     <string name="profile_test_no_profiles">لا توجد ملفات للاختبار</string>
-    <string name="profile_test_results_changed">تغيّرت الملفات أو النتائج. أعد تشغيل الاختبار.</string>
     <string name="profile_test_reorder">اسحب لإعادة الترتيب</string>
+    <string name="profile_test_cancel">إلغاء الاختبارات</string>
+    <string name="profile_test_need_available">شغّل فحص URL أولاً. تعمل اختبارات السرعة على الملفات المتاحة فقط.</string>
 </resources>

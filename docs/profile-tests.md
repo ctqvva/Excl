@@ -1,11 +1,13 @@
 # Profile country and speed tests
 
 Use **Connection test → URL test** to check the current list's latency and exit
-country, or **Speed test** to measure download/upload rates. Long-press a profile
-for the same two actions on that profile. Both reuse the existing test-results
-dialog. There is no separate test screen. Country flags appear beside the existing
-profile status, with transfer rates on a compact second line. URL tests preserve
-the last speed sample. Clear results removes both latency and diagnostic data.
+country, or **Speed test** to measure download/upload rates for available profiles.
+Long-press a profile for the same actions. Speed testing is enabled after a
+successful URL check. Progress and results appear directly in the main cards;
+batch progress appears in the toolbar. **Cancel tests** in the list menu stops
+the batch. No test window opens. The speed-test menu identifies the 10 MiB budget.
+URL tests preserve the last speed sample, hidden while a profile is unavailable.
+Clear results cancels the batch and removes latency and diagnostic data.
 
 Long press opens the action menu for every profile. Manual groups retain drag
 reordering through a handle; subscription groups do not show drag handles.
@@ -27,12 +29,15 @@ location. Country failure does not turn a successful URL check into a failed
 latency result. Bulk URL checks use six workers, as before.
 
 Speed tests use Cloudflare, receive 8 MiB and send a 2 MiB random body per profile.
-The existing dialog identifies the transfer budget. Speed tests run one profile
+The menu identifies the transfer budget. Speed tests run one profile
 at a time to avoid competing with one another. URL requests have a five-second
-deadline; country and transfer requests have a 20-second deadline. Each phase
-reports its own failure and retains successful results. Cancel or destroying the
-fragment's view cancels native requests. Download timing covers the body; upload
-timing includes acknowledgement. Rates are decimal Mbps and are bounded sample
+deadline; country and transfer requests have a 20-second deadline. URL failures
+stop further requests for that profile. After a successful URL check, the other
+phases retain their successful results when a later phase fails. Cancelling,
+clearing results, editing profiles, or destroying the fragment's view cancels
+native requests. Card state belongs to its run, so late cancelled workers cannot
+clear newer progress or restore cleared data. Download timing covers the body;
+upload timing includes acknowledgement. Rates are decimal Mbps and are bounded sample
 estimates, not line-capacity benchmarks. Tests are manual; no scheduled tests run.
 
 HTTP dial contexts are short-lived; native outbound sessions have a separate
@@ -52,7 +57,7 @@ cd library/core
 go test -race profileprobe/profile_probe.go profileprobe/profile_probe_test.go
 cd ../..
 ./library/core/build.sh
-./gradlew :app:compileOssDebugKotlin
+./gradlew :app:testOssDebugUnitTest :app:compileOssDebugKotlin
 ```
 
 Both core build scripts copy the probe sources into the temporary remote module

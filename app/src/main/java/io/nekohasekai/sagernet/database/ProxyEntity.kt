@@ -598,6 +598,9 @@ data class ProxyEntity(
         @Query("UPDATE proxy_entities SET status = :status, ping = :ping, error = :error WHERE id = :proxyId")
         fun updateTestResult(proxyId: Long, status: Int, ping: Int, error: String?): Int
 
+        @Query("UPDATE proxy_entities SET status = 0, ping = 0, error = NULL WHERE groupId = :groupId")
+        fun clearTestResults(groupId: Long): Int
+
         @Update
         fun updateProxy(proxies: List<ProxyEntity>): Int
 

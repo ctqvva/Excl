@@ -2,7 +2,6 @@
 <resources>
     <string name="profile_test_country">Sjekk land</string>
     <string name="profile_test_speed">Hastighetstest</string>
-    <string name="profile_test_speed_note">Sjekker land, laster deretter ned 8 MiB og opp 2 MiB per profil med Cloudflare. Testene kjøres én om gangen; resultatene avhenger av nettverket og testserveren.</string>
     <string name="profile_test_checking_country">Sjekker land…</string>
     <string name="profile_test_downloading">Måler nedlasting…</string>
     <string name="profile_test_uploading">Måler opplasting…</string>
@@ -11,6 +10,7 @@
     <string name="profile_test_upload">Opplasting</string>
     <string name="profile_test_browser_unsupported">Videresending via nettleser støttes ikke av profiltester</string>
     <string name="profile_test_no_profiles">Ingen profiler å teste</string>
-    <string name="profile_test_results_changed">Profiler eller resultater er endret. Kjør testen på nytt.</string>
     <string name="profile_test_reorder">Dra for å endre rekkefølge</string>
+    <string name="profile_test_cancel">Avbryt tester</string>
+    <string name="profile_test_need_available">Kjør en URL-test først. Hastighetstester kjøres bare på tilgjengelige profiler.</string>
 </resources>
