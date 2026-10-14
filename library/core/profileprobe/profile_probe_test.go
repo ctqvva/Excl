@@ -146,3 +146,70 @@ func TestDeadlineDuringBody(t *testing.T) {
 		t.Fatal("body read exceeded deadline")
 	}
 }
+
+func TestConnectionSurvivesDialContextCancellation(t *testing.T) {
+	var session context.Context
+	client, server := net.Pipe()
+	defer server.Close()
+	p := NewProfileProbe(&V2RayInstance{dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		session = ctx
+		context.AfterFunc(ctx, func() { client.Close() })
+		return client, nil
+	}})
+	defer p.Close()
+	dialCtx, dialCancel := context.WithCancel(context.Background())
+	conn, err := p.transport.DialContext(dialCtx, "tcp", "example.com:443")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialCancel() // net/http retires this context once the connection is established.
+	select {
+	case <-session.Done():
+		t.Fatal("dial cancellation killed the established outbound")
+	default:
+	}
+	done := make(chan error, 1)
+	go func() { _, err := server.Write([]byte("ok")); done <- err }()
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+	data := make([]byte, 2)
+	if _, err := io.ReadFull(conn, data); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+	select {
+	case <-session.Done():
+	case <-time.After(time.Second):
+		t.Fatal("closing the connection did not cancel its session")
+	}
+}
+
+func TestURLCheckPreservesHEADAnd204(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "HEAD" {
+			t.Errorf("method %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	p := NewProfileProbe(&V2RayInstance{dial: (&net.Dialer{}).DialContext})
+	defer p.Close()
+	if _, err := p.UrlTest(server.URL, 5000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCancellationDuringDial(t *testing.T) {
+	p := NewProfileProbe(&V2RayInstance{dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}})
+	defer p.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := p.transport.DialContext(ctx, "tcp", "example.com:443"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("dial error: %v", err)
+	}
+}

@@ -22,7 +22,8 @@ val verifyNativeCoreBindings = tasks.register("verifyNativeCoreBindings") {
         if (!coreAar.isFile) {
             throw GradleException("Native core AAR is missing: $coreAar. $rebuild")
         }
-        val required = setOf("libexclavecore/ProfileProbe.class", "libexclavecore/ProfileCountry.class")
+        val required = setOf("libexclavecore/ProfileProbe.class", "libexclavecore/ProfileCountry.class",
+            "libexclavecore/ProfileProbe.urlTest")
         val bindings: Set<String> = try {
             ZipFile(coreAar).use { aar ->
                 val classes = aar.getEntry("classes.jar")
@@ -32,6 +33,10 @@ val verifyNativeCoreBindings = tasks.register("verifyNativeCoreBindings") {
                         var entry = jar.nextEntry
                         while (entry != null) {
                             add(entry.name)
+                            if (entry.name == "libexclavecore/ProfileProbe.class" &&
+                                jar.readBytes().toString(Charsets.ISO_8859_1).contains("urlTest")) {
+                                add("libexclavecore/ProfileProbe.urlTest")
+                            }
                             entry = jar.nextEntry
                         }
                     }

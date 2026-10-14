@@ -7,11 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
-
-	"net"
 )
 
 const probeDownloadBytes = 8 * 1024 * 1024
@@ -32,23 +31,70 @@ type ProfileCountry struct {
 }
 
 func NewProfileProbe(instance *V2RayInstance) *ProfileProbe {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctxRoot, cancel := context.WithCancel(context.Background())
 	transport := &http.Transport{
+		ForceAttemptHTTP2:   true,
 		DisableCompression:  true,
 		DisableKeepAlives:   true,
 		TLSHandshakeTimeout: 10 * time.Second,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			return probeDial(instance, ctx, network, address)
+			// net/http cancels its dial context after handing off the connection.
+			// Core dispatch uses the context for the entire outbound session.
+			session, stop := context.WithCancel(ctxRoot)
+			stopDial := context.AfterFunc(ctx, stop)
+			conn, err := probeDial(instance, session, network, address)
+			if !stopDial() || session.Err() != nil {
+				stop()
+				if conn != nil {
+					conn.Close()
+				}
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+				return nil, session.Err()
+			}
+			if err != nil {
+				stop()
+				return nil, err
+			}
+			return &profileProbeConn{Conn: conn, cancel: stop}, nil
 		},
 	}
 	return &ProfileProbe{
-		ctx: ctx, cancel: cancel, transport: transport,
+		ctx: ctxRoot, cancel: cancel, transport: transport,
 		client: &http.Client{
 			Transport:     transport,
 			Timeout:       20 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 	}
+}
+
+type profileProbeConn struct {
+	net.Conn
+	cancel context.CancelFunc
+}
+
+func (c *profileProbeConn) Close() error {
+	c.cancel()
+	return c.Conn.Close()
+}
+
+// UrlTest preserves the existing HEAD-test semantics, including 204 responses.
+func (p *ProfileProbe) UrlTest(link string, timeout int32) (int32, error) {
+	ctx, cancel := context.WithTimeout(p.ctx, time.Duration(timeout)*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "HEAD", link, nil)
+	if err != nil {
+		return 0, err
+	}
+	start := time.Now()
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	resp.Body.Close()
+	return int32(time.Since(start).Milliseconds()), nil
 }
 
 // Close is safe during a request, including while downloading/uploading.
