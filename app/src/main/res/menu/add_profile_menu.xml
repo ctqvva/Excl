@@ -136,9 +136,7 @@
             <item
                 android:id="@+id/action_connection_url_test"
                 android:title="@string/connection_test_url_test" />
-            <item android:id="@+id/action_profile_country_test" android:title="@string/profile_test_country" />
             <item android:id="@+id/action_profile_speed_test" android:title="@string/profile_test_speed" />
-            <item android:id="@+id/action_profile_selected_test" android:title="@string/profile_test_selected" />
             <item
                 android:id="@+id/action_connection_test_clear_results"
                 android:title="@string/connection_test_clear_results" />

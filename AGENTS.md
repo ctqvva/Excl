@@ -32,9 +32,9 @@ Rebuild the Go core when `library/core/*` or Kotlin core-API usage changes
 - `library/proto`, `library/proto-stub`, `plugin/api`, `plugin/naive` —
   Gradle modules; `plugin/naive/src/main/jni/naiveproxy` is a git submodule.
 - `app/schemas/…/*.json` — Room schema exports. Commit with the entity change.
-- Profile tests use a dedicated Material 3 Expressive sheet; `src/legacy` overrides
-  its theme with Material 3 for the Android 5/6 compatible Material library.
-  Results are private preferences, not Room fields; see `docs/profile-tests.md`.
+- URL tests also check the exit country; speed tests share the existing test dialog.
+  Both actions are in the list menu and profile long-press menu. Manual groups use
+  drag handles for reordering. See `docs/profile-tests.md`.
 - `docs/privacy-hardening.md`, `docs/stealth-build.md` — read before touching
   those areas.
 - Excl-local subsystems (no upstream counterpart — never "align" them away):

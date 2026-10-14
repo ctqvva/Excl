@@ -2,23 +2,15 @@
 <resources>
     <string name="profile_test_country">Kontrola země</string>
     <string name="profile_test_speed">Test rychlosti</string>
-    <string name="profile_test_selected">Otestovat vybraný profil</string>
-    <string name="profile_test_country_note">Ověří veřejnou výstupní IP adresu a zemi přes každý profil pomocí Cloudflare</string>
     <string name="profile_test_speed_note">Ověří zemi, poté stáhne 8 MiB a odešle 2 MiB na profil pomocí Cloudflare. Testy probíhají postupně; výsledky závisí na síti a testovacím serveru.</string>
-    <string name="profile_test_start">Spustit test</string>
-    <string name="profile_test_stop">Zastavit</string>
-    <string name="profile_test_close">Zavřít</string>
-    <string name="profile_test_ready">Připraveno</string>
     <string name="profile_test_checking_country">Kontrola země…</string>
     <string name="profile_test_downloading">Měření stahování…</string>
     <string name="profile_test_uploading">Měření odesílání…</string>
-    <string name="profile_test_complete">Dokončeno</string>
-    <string name="profile_test_stopped">Zastaveno</string>
     <string name="profile_test_progress">%1$d z %2$d</string>
     <string name="profile_test_download">Stahování</string>
     <string name="profile_test_upload">Odesílání</string>
-    <string name="profile_test_last_checked">Ověřeno %1$s</string>
     <string name="profile_test_browser_unsupported">Přesměrování přes prohlížeč není při testování profilů podporováno</string>
     <string name="profile_test_no_profiles">Žádné profily k testování</string>
     <string name="profile_test_results_changed">Profily nebo výsledky se změnily. Spusťte test znovu.</string>
+    <string name="profile_test_reorder">Přetažením změňte pořadí</string>
 </resources>

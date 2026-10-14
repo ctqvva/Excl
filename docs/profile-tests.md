@@ -1,60 +1,62 @@
 # Profile country and speed tests
 
-Open **Connection test → Country check / Speed test** to test the current group,
-**Test selected profile** to test the selected profile, or use an individual
-profile's share menu. Tap saved results on a profile card to reopen its tester.
-The sheet uses a dedicated Material 3 Expressive theme, even when the host uses
-an older app theme. The Android 5/6 legacy flavor uses a Material 3 fallback
-because its compatible Material library does not include Expressive themes.
-Press **Run test** to start; **Stop** cancels native requests.
-Closing the sheet or destroying its view also cancels the run.
+Use **Connection test → URL test** to check the current list's latency and exit
+country, or **Speed test** to measure download/upload rates. Long-press a profile
+for the same two actions on that profile. Both reuse the existing test-results
+dialog. There is no separate test screen. Country flags appear beside the existing
+profile status, with transfer rates on a compact second line. URL tests preserve
+the last speed sample. Clear results removes both latency and diagnostic data.
 
-Tests launch an isolated `forTest` core instance for each profile. Requests dial
-through that instance's dispatcher, with the existing underlying-network resolver
-and system-TUN protection path. Probes add no HTTP/SOCKS/IPC listener and do not fall back to direct HTTP on
-failure. Existing protocol/plugin plumbing is retained. Full custom configurations
-have inbounds, API and metrics removed from the temporary test configuration
-to avoid opening production listeners or colliding with the active service. Browser-forwarded transports are skipped.
-Chains, balancers and custom configurations retain their configured outbound
-behavior; a balancer's result describes the exit used for that test, not every
-member. Custom routing can intentionally choose a different exit for the endpoint.
+Long press opens the action menu for every profile. Manual groups retain drag
+reordering through a handle; subscription groups do not show drag handles.
 
-Cloudflare's HTTPS trace endpoint supplies the observed public IP and country
-code. This is egress geolocation, not the configured server's physical location.
-Speed tests then receive an 8 MiB response and send a 2 MiB random body to
-`speed.cloudflare.com`. Tests are sequential to avoid competing with one another.
-Each request has a 20-second deadline. Redirects and non-200 responses fail.
-Download timing covers the response body; upload timing includes acknowledgement.
-Rates are decimal Mbps. These bounded samples are estimates, not a line-capacity
-benchmark. Each phase reports its own failure without blocking the next phase. Completed
-measurements are retained if a later phase fails.
+Tests launch an isolated `forTest` core instance per profile and use its native
+outbound dispatcher, underlying-network resolver and system-TUN protection path.
+No new local listener is added and failed HTTP requests do not fall back to direct
+HTTP. Existing protocol/plugin plumbing is retained. The temporary full-custom
+configuration has production inbounds, API and metrics removed to avoid opening
+listeners or colliding with the active service. Browser forwarding is unsupported
+and is not marked as an unavailable server. Chains/balancers retain configured
+behavior; a balancer result describes the exit used for that test. Custom routing
+can intentionally choose another exit for the endpoint.
 
-The provider sees the tested exit IP. Tests are manual and the sheet shows the
-provider and transfer budget before starting. No scheduled/background tests run.
-Results (country, public IP, rates, timestamp and a hash of the profile bean) are
-stored in private preferences, outside Room entities and exported profiles.
-Profile edits and front/landing proxy changes invalidate saved results; clearing
-results also prevents an in-flight test from restoring them. A newly started test
-replaces the previous sample as its phases complete. Network changes can make
-saved results stale; their timestamp remains visible.
+URL checks use the configured test URL and preserve HEAD/204 semantics. Their
+country lookup uses Cloudflare's HTTPS trace endpoint to obtain the observed
+public IP and country. This is egress geolocation, not the server's physical
+location. Country failure does not turn a successful URL check into a failed
+latency result. Bulk URL checks use six workers, as before.
+
+Speed tests use Cloudflare, receive 8 MiB and send a 2 MiB random body per profile.
+The existing dialog identifies the transfer budget. Speed tests run one profile
+at a time to avoid competing with one another. URL requests have a five-second
+deadline; country and transfer requests have a 20-second deadline. Each phase
+reports its own failure and retains successful results. Cancel or destroying the
+fragment's view cancels native requests. Download timing covers the body; upload
+timing includes acknowledgement. Rates are decimal Mbps and are bounded sample
+estimates, not line-capacity benchmarks. Tests are manual; no scheduled tests run.
+
+HTTP dial contexts are short-lived; native outbound sessions have a separate
+lifetime which ends when the connection closes or the probe is cancelled. This
+prevents net/http from closing the native pipe after connection establishment.
+
+Results live in private preferences, outside Room entities and exported profiles.
+Configuration/topology changes invalidate results. Epochs prevent in-flight tests
+from restoring cleared results. Latency updates write only existing test fields
+and leave profile configuration and traffic untouched. Saved speed samples may
+become stale when the network changes.
 
 Native verification:
 
 ```sh
 cd library/core
 go test -race profileprobe/profile_probe.go profileprobe/profile_probe_test.go
-./build.sh
 cd ../..
+./library/core/build.sh
 ./gradlew :app:compileOssDebugKotlin
 ```
 
 Both core build scripts copy the probe sources into the temporary remote module
-before binding. Do not distribute an APK with an old core AAR: it must expose
-`NewProfileProbe`, `ProfileProbe`, and `ProfileCountry`.
-
-If Kotlin reports `Unresolved reference 'ProfileProbe'` or `newProfileProbe`, the
-checkout is using an older core AAR. Run `./run lib core` or
-`./library/core/build.sh` from the repository root before rerunning Gradle.
-`verifyNativeCoreBindings` checks the local AAR before the app build and reports
-this mismatch explicitly. The build scripts publish the AAR even when `app/libs`
-does not yet exist. A rebuilt AAR in another worktree does not update this checkout.
+before binding and publish the AAR into `app/libs`. If Kotlin reports missing
+`ProfileProbe`/`urlTest` bindings, rebuild in the affected checkout with
+`./run lib core` or `./library/core/build.sh`. A rebuilt AAR in another worktree
+does not update this checkout. Gradle checks the local bindings before compilation.

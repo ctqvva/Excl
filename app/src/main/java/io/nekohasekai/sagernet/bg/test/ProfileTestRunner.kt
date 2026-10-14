@@ -23,7 +23,7 @@ import libexclavecore.Libexclavecore
 import java.util.concurrent.atomic.AtomicReference
 
 object ProfileTestRunner {
-    enum class Phase { COUNTRY, DOWNLOAD, UPLOAD }
+    enum class Phase { URL, COUNTRY, DOWNLOAD, UPLOAD }
 
     fun usesBrowserForwarder(profile: ProxyEntity, visited: MutableSet<Long> = HashSet()): Boolean {
         if (!visited.add(profile.id)) return false
@@ -41,6 +41,7 @@ object ProfileTestRunner {
         onPhase: suspend (Phase) -> Unit,
         onResult: suspend (ProfileTestResults.Result) -> Unit,
         onError: suspend (Phase, Exception) -> Unit,
+        onLatency: suspend (Int) -> Unit,
     ) = withContext(Dispatchers.IO) {
         val instance = TestInstance(profile)
         val pluginError = AtomicReference<Exception?>()
@@ -52,8 +53,8 @@ object ProfileTestRunner {
         try {
             instance.init()
             ensureActive()
-            check(!instance.config.requireWs && !instance.config.requireSh) {
-                SagerNet.application.getString(R.string.profile_test_browser_unsupported)
+            if (instance.config.requireWs || instance.config.requireSh) {
+                throw UnsupportedOperationException(SagerNet.application.getString(R.string.profile_test_browser_unsupported))
             }
             instance.launch()
             if (instance.pluginPath.isNotEmpty() || profile.type == ProxyEntity.TYPE_BYEBYEDPI) delay(500)
@@ -64,7 +65,12 @@ object ProfileTestRunner {
                 try { awaitCancellation() } finally { native.close() }
             }
             try {
-                var result = ProfileTestResults.Result(ProfileTestResults.fingerprint(profile))
+                var result = ProfileTestResults.get(profile)
+                    ?: ProfileTestResults.Result(ProfileTestResults.fingerprint(profile))
+                result = result.copy(checkedAt = System.currentTimeMillis(), ip = "", country = "",
+                    download = if (speed) null else result.download,
+                    upload = if (speed) null else result.upload)
+                onResult(result)
                 suspend fun <T> measure(phase: Phase, block: () -> T): T? {
                     onPhase(phase)
                     return try {
@@ -78,6 +84,7 @@ object ProfileTestRunner {
                         null
                     }
                 }
+                if (!speed) measure(Phase.URL) { native.urlTest(DataStore.connectionTestURL, 5000) }?.let { onLatency(it) }
                 measure(Phase.COUNTRY) { native.country() }?.let { country ->
                     result = result.copy(ip = country.ip, country = country.countryCode)
                     onResult(result)

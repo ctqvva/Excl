@@ -79,6 +79,6 @@ For every release candidate:
 ## Manual profile diagnostics
 
 Country and speed tests dial the tested native instance directly and open no
-local listener. The sheet identifies Cloudflare and the 10 MiB speed-test budget
-before the user starts. Requests have deadlines and native cancellation; failure
+additional local listener. The existing results dialog identifies Cloudflare and
+the 10 MiB speed-test budget. Requests have deadlines and native cancellation; failure
 does not select a direct-network fallback. See [profile tests](profile-tests.md).

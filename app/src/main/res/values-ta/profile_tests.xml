@@ -2,23 +2,15 @@
 <resources>
     <string name="profile_test_country">நாட்டைச் சரிபார்</string>
     <string name="profile_test_speed">வேகச் சோதனை</string>
-    <string name="profile_test_selected">தேர்ந்தெடுத்த சுயவிவரத்தைச் சோதி</string>
-    <string name="profile_test_country_note">Cloudflare மூலம் ஒவ்வொரு சுயவிவரத்தின் பொது வெளியேற்ற IP முகவரியையும் நாட்டையும் சரிபார்க்கிறது</string>
     <string name="profile_test_speed_note">Cloudflare மூலம் நாட்டைச் சரிபார்த்தபின், ஒவ்வொரு சுயவிவரத்திலும் 8 MiB பதிவிறக்கி 2 MiB பதிவேற்றுகிறது. சோதனைகள் ஒவ்வொன்றாக நடைபெறும்; முடிவுகள் வலையமைப்பையும் சோதனைச் சேவையகத்தையும் சார்ந்தவை.</string>
-    <string name="profile_test_start">சோதனையைத் தொடங்கு</string>
-    <string name="profile_test_stop">நிறுத்து</string>
-    <string name="profile_test_close">மூடு</string>
-    <string name="profile_test_ready">தயார்</string>
     <string name="profile_test_checking_country">நாடு சரிபார்க்கப்படுகிறது…</string>
     <string name="profile_test_downloading">பதிவிறக்கம் அளவிடப்படுகிறது…</string>
     <string name="profile_test_uploading">பதிவேற்றம் அளவிடப்படுகிறது…</string>
-    <string name="profile_test_complete">முடிந்தது</string>
-    <string name="profile_test_stopped">நிறுத்தப்பட்டது</string>
     <string name="profile_test_progress">%2$d இல் %1$d</string>
     <string name="profile_test_download">பதிவிறக்கம்</string>
     <string name="profile_test_upload">பதிவேற்றம்</string>
-    <string name="profile_test_last_checked">சரிபார்த்த நேரம் %1$s</string>
     <string name="profile_test_browser_unsupported">சுயவிவரச் சோதனைகள் உலாவி வழி அனுப்புதலை ஆதரிக்கவில்லை</string>
     <string name="profile_test_no_profiles">சோதிக்கச் சுயவிவரங்கள் இல்லை</string>
     <string name="profile_test_results_changed">சுயவிவரங்கள் அல்லது முடிவுகள் மாறியுள்ளன. சோதனையை மீண்டும் இயக்கவும்.</string>
+    <string name="profile_test_reorder">வரிசையை மாற்ற இழுக்கவும்</string>
 </resources>

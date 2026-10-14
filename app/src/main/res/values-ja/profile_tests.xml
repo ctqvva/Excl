@@ -2,23 +2,15 @@
 <resources>
     <string name="profile_test_country">国を確認</string>
     <string name="profile_test_speed">速度テスト</string>
-    <string name="profile_test_selected">選択したプロファイルをテスト</string>
-    <string name="profile_test_country_note">Cloudflare を使用して各プロファイル経由の出口の公開 IP アドレスと国を確認します</string>
     <string name="profile_test_speed_note">Cloudflare を使用して国を確認した後、各プロファイルで 8 MiB をダウンロードし、2 MiB をアップロードします。テストは順番に実行され、結果はネットワークとテストサーバーに依存します。</string>
-    <string name="profile_test_start">テスト開始</string>
-    <string name="profile_test_stop">停止</string>
-    <string name="profile_test_close">閉じる</string>
-    <string name="profile_test_ready">準備完了</string>
     <string name="profile_test_checking_country">国を確認中…</string>
     <string name="profile_test_downloading">ダウンロードを測定中…</string>
     <string name="profile_test_uploading">アップロードを測定中…</string>
-    <string name="profile_test_complete">完了</string>
-    <string name="profile_test_stopped">停止済み</string>
     <string name="profile_test_progress">%2$d 件中 %1$d 件</string>
     <string name="profile_test_download">ダウンロード</string>
     <string name="profile_test_upload">アップロード</string>
-    <string name="profile_test_last_checked">確認日時 %1$s</string>
     <string name="profile_test_browser_unsupported">プロファイルテストではブラウザー転送に対応していません</string>
     <string name="profile_test_no_profiles">テストするプロファイルがありません</string>
     <string name="profile_test_results_changed">プロファイルまたは結果が変更されました。もう一度テストしてください。</string>
+    <string name="profile_test_reorder">ドラッグして並べ替え</string>
 </resources>

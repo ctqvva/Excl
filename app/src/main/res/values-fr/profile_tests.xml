@@ -2,23 +2,15 @@
 <resources>
     <string name="profile_test_country">Vérifier le pays</string>
     <string name="profile_test_speed">Test de débit</string>
-    <string name="profile_test_selected">Tester le profil sélectionné</string>
-    <string name="profile_test_country_note">Vérifie l’adresse IP publique de sortie et le pays via chaque profil avec Cloudflare</string>
     <string name="profile_test_speed_note">Vérifie le pays, puis télécharge 8 Mio et envoie 2 Mio par profil avec Cloudflare. Les tests sont séquentiels ; les résultats dépendent du réseau et du serveur de test.</string>
-    <string name="profile_test_start">Lancer le test</string>
-    <string name="profile_test_stop">Arrêter</string>
-    <string name="profile_test_close">Fermer</string>
-    <string name="profile_test_ready">Prêt</string>
     <string name="profile_test_checking_country">Vérification du pays…</string>
     <string name="profile_test_downloading">Mesure du téléchargement…</string>
     <string name="profile_test_uploading">Mesure de l’envoi…</string>
-    <string name="profile_test_complete">Terminé</string>
-    <string name="profile_test_stopped">Arrêté</string>
     <string name="profile_test_progress">%1$d sur %2$d</string>
     <string name="profile_test_download">Téléchargement</string>
     <string name="profile_test_upload">Envoi</string>
-    <string name="profile_test_last_checked">Vérifié le %1$s</string>
     <string name="profile_test_browser_unsupported">Le transfert via navigateur n’est pas pris en charge par les tests de profils</string>
     <string name="profile_test_no_profiles">Aucun profil à tester</string>
     <string name="profile_test_results_changed">Les profils ou les résultats ont changé. Relancez le test.</string>
+    <string name="profile_test_reorder">Faites glisser pour réordonner</string>
 </resources>

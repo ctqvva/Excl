@@ -54,7 +54,7 @@ import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.aidl.TrafficStats
 import io.nekohasekai.sagernet.bg.BalancerRuntimeState
 import io.nekohasekai.sagernet.bg.BaseService
-import io.nekohasekai.sagernet.bg.test.V2RayTestInstance
+import io.nekohasekai.sagernet.bg.test.ProfileTestRunner
 import io.nekohasekai.sagernet.bg.test.ProfileTestResults
 import io.nekohasekai.sagernet.database.*
 import io.nekohasekai.sagernet.databinding.LayoutProfileBinding
@@ -689,13 +689,8 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_connection_url_test -> {
                 urlTest()
             }
-            R.id.action_profile_country_test, R.id.action_profile_speed_test -> {
-                ProfileTestDialog.create(groupId = selectedGroup.id, speed = item.itemId == R.id.action_profile_speed_test)
-                    .show(childFragmentManager, "profile-tests")
-            }
-            R.id.action_profile_selected_test -> {
-                if (DataStore.selectedProxy > 0) ProfileTestDialog.create(profileId = DataStore.selectedProxy)
-                    .show(childFragmentManager, "profile-tests")
+            R.id.action_profile_speed_test -> {
+                urlTest(speed = true)
             }
             R.id.action_update_subscription -> {
                 runOnDefaultDispatcher {
@@ -724,6 +719,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             .setCancelable(false)
         lateinit var cancel: () -> Unit
         val results = ArrayList<ProxyEntity>()
+        val notes = HashMap<Long, String>()
         val adapter = TestAdapter()
         val scrollTimer = Timer("insert timer")
         var currentTask: TimerTask? = null
@@ -749,8 +745,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         fun update(profile: ProxyEntity) {
             binding.listView.post {
-                val index = results.indexOf(profile)
-                adapter.notifyItemChanged(index)
+                val index = results.indexOfFirst { it.id == profile.id }
+                if (index >= 0) adapter.notifyItemChanged(index)
             }
         }
 
@@ -787,11 +783,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                 binding.edit.isGone = true
                 binding.share.isGone = true
                 binding.deleteIcon.isGone = true
+                binding.dragHandle.isGone = true
             }
 
             fun bind(profile: ProxyEntity) {
                 binding.profileName.text = profile.displayName()
-                binding.profileType.text = profile.displayType()
+                binding.profileType.text = listOf(profile.displayType(), notes[profile.id].orEmpty())
+                    .filter { it.isNotEmpty() }.joinToString("\n")
 
                 when (profile.status) {
                     -1 -> {
@@ -816,6 +814,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
+                binding.profileStatus.text = ProfileTestResults.statusText(
+                    requireContext(), profile, binding.profileStatus.text.toString()
+                )
+                binding.profileStatus.gravity = Gravity.END
+
                 if (profile.status == 3) {
                     binding.content.setOnClickListener {
                         alert(profile.error ?: "<?>").show()
@@ -828,108 +831,127 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     }
 
-    private fun ProxyEntity.useBrowserForwarder(): Boolean {
-        return when (val bean = requireBean()) {
-            is StandardV2RayBean -> {
-                when (bean.type) {
-                    "ws" -> bean.wsUseBrowserForwarder
-                    "splithttp" -> bean.shUseBrowserForwarder
-                    else -> false
+    private var profileTestJob: Job? = null
+
+    /** Existing list test dialog, also used by a profile's long-press actions. */
+    fun urlTest(profileId: Long? = null, speed: Boolean = false) {
+        if (profileTestJob?.isActive == true) return
+        val groupId = selectedGroup.id
+        val test = TestDialog()
+        test.builder.setTitle(if (speed) R.string.profile_test_speed else R.string.connection_test_url_test)
+        if (speed) test.builder.setMessage(R.string.profile_test_speed_note)
+        val dialog = test.builder.show()
+        dialog.getButton(DialogInterface.BUTTON_NEUTRAL).isEnabled = false
+        test.binding.progressCircular.setProgressCompat(0, false)
+        test.cancel = { profileTestJob?.cancel() }
+
+        profileTestJob = viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val profiles = withContext(Dispatchers.IO) {
+                    if (profileId != null) listOfNotNull(ProfileManager.getProfile(profileId))
+                    else SagerDatabase.proxyDao.getByGroup(groupId)
                 }
-            }
-            is ChainBean -> {
-                SagerDatabase.proxyDao.getEntities(bean.proxies).any {
-                    it.useBrowserForwarder()
+                val pending = ConcurrentLinkedQueue(profiles)
+                val epoch = ProfileTestResults.changes.value
+                var finished = 0
+                dialog.getButton(DialogInterface.BUTTON_NEUTRAL).text = if (profiles.isEmpty()) {
+                    getString(R.string.profile_test_no_profiles)
+                } else getString(R.string.profile_test_progress, 0, profiles.size)
+
+                suspend fun saveLatency(profile: ProxyEntity) = withContext(Dispatchers.IO) {
+                    ensureActive()
+                    val current = ProfileManager.getProfile(profile.id) ?: return@withContext
+                    if (ProfileTestResults.changes.value != epoch ||
+                        ProfileTestResults.fingerprint(current) != ProfileTestResults.fingerprint(profile)
+                    ) return@withContext
+                    // Keep current traffic and configuration; only test fields belong to this run.
+                    SagerDatabase.proxyDao.updateTestResult(profile.id, profile.status, profile.ping, profile.error)
+                    ProfileManager.postUpdate(profile.id)
                 }
+
+                List(if (speed) 1 else 6) {
+                    launch {
+                        while (isActive) {
+                            val profile = pending.poll() ?: break
+                            val errors = ArrayList<String>()
+                            if (!speed) { profile.status = 0; profile.error = null }
+                            test.insert(profile)
+                            try {
+                                val supported = withContext(Dispatchers.IO) { !ProfileTestRunner.usesBrowserForwarder(profile) }
+                                if (!supported) throw UnsupportedOperationException(getString(R.string.profile_test_browser_unsupported))
+                                ProfileTestRunner.run(profile, speed,
+                                    onPhase = { phase -> withContext(Dispatchers.Main) {
+                                        test.notes[profile.id] = getString(when (phase) {
+                                            ProfileTestRunner.Phase.URL -> R.string.connection_test_testing
+                                            ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_checking_country
+                                            ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_downloading
+                                            ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_uploading
+                                        })
+                                        test.update(profile)
+                                    } },
+                                    onResult = { result ->
+                                        ensureActive()
+                                        if (!ProfileTestResults.put(profile.id, result, epoch)) {
+                                            error(getString(R.string.profile_test_results_changed))
+                                        }
+                                        ProfileManager.postUpdate(profile.id)
+                                        withContext(Dispatchers.Main) { test.update(profile) }
+                                    },
+                                    onLatency = { ping -> withContext(Dispatchers.Main) {
+                                        profile.status = 1
+                                        profile.ping = ping
+                                        profile.error = null
+                                        saveLatency(profile)
+                                        test.update(profile)
+                                    } },
+                                    onError = { phase, error -> withContext(Dispatchers.Main) {
+                                        val label = getString(when (phase) {
+                                            ProfileTestRunner.Phase.URL -> R.string.connection_test_url_test
+                                            ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_country
+                                            ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_download
+                                            ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_upload
+                                        })
+                                        errors.add("$label: ${error.readableMessage}")
+                                        if (phase == ProfileTestRunner.Phase.URL) {
+                                            profile.status = 3
+                                            profile.error = error.readableMessage
+                                            saveLatency(profile)
+                                        }
+                                    } },
+                                )
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                errors.add(e.readableMessage)
+                                if (!speed) {
+                                    profile.status = if (e is PluginManager.PluginNotFoundException || e is UnsupportedOperationException) -1 else 3
+                                    profile.error = e.readableMessage
+                                    saveLatency(profile)
+                                }
+                            }
+                            test.notes[profile.id] = errors.joinToString("\n")
+                            test.update(profile)
+                            finished++
+                            test.binding.progressCircular.setProgressCompat(
+                                finished * 100 / profiles.size, true
+                            )
+                            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).text =
+                                getString(R.string.profile_test_progress, finished, profiles.size)
+                        }
+                    }
+                }.joinAll()
+                test.binding.progressCircular.isGone = true
+                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setText(android.R.string.ok)
+            } finally {
+                test.close()
+                if (!isActive) dialog.dismiss()
             }
-            is BalancerBean -> {
-                SagerDatabase.proxyDao.getEntities(bean.proxies).any {
-                    it.useBrowserForwarder()
-                }
-            }
-            else -> false
         }
     }
 
-    @Suppress("EXPERIMENTAL_API_USAGE")
-    fun urlTest() {
-        val test = TestDialog()
-        val dialog = test.builder.show()
-        dialog.getButton(DialogInterface.BUTTON_NEUTRAL).isEnabled = false
-        val testJobs = mutableListOf<Job>()
-
-        val mainJob = runOnDefaultDispatcher {
-            val group = DataStore.currentGroup()
-            var profilesUnfiltered = SagerDatabase.proxyDao.getByGroup(group.id)
-            profilesUnfiltered = profilesUnfiltered.filter {
-                !it.useBrowserForwarder()
-            }
-            val profiles = ConcurrentLinkedQueue(profilesUnfiltered)
-
-            val profileCount = profilesUnfiltered.size
-            var finishedProfileCount = 0
-            //stopService()
-
-            val link = DataStore.connectionTestURL
-            val timeout = 5000
-
-            repeat(6) {
-                testJobs.add(launch {
-                    while (isActive) {
-                        val profile = profiles.poll() ?: break
-                        profile.status = 0
-                        test.insert(profile)
-
-                        try {
-                            val instance = if (DataStore.tunImplementation == TunImplementation.SYSTEM && DataStore.serviceMode == Key.MODE_VPN && SagerNet.started && DataStore.startedProfile > 0) {
-                                V2RayTestInstance(profile, link, timeout, protectPath = SagerNet.deviceStorage.noBackupFilesDir.toString() + "/protect_path")
-                            } else {
-                                V2RayTestInstance(profile, link, timeout)
-                            }
-                            val result = instance.use {
-                                it.doTest()
-                            }
-                            profile.status = 1
-                            profile.ping = result
-                        } catch (e: PluginManager.PluginNotFoundException) {
-                            profile.status = -1
-                            profile.error = e.readableMessage
-                        } catch (e: Exception) {
-                            profile.status = 3
-                            profile.error = e.readableMessage
-                        }
-                        onMainDispatcher {
-                            finishedProfileCount++
-                            test.binding.progressCircular.apply {
-                                isVisible = true
-                                setProgressCompat(
-                                    ((finishedProfileCount.toDouble() / profileCount.toDouble()) * 100).toInt(),
-                                    true
-                                )
-                            }
-                            // TODO: fix l10n
-                            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).text = "$finishedProfileCount/$profileCount"
-                        }
-
-                        test.update(profile)
-                        ProfileManager.updateProfile(profile)
-                    }
-                })
-            }
-
-            testJobs.joinAll()
-            test.close()
-            onMainDispatcher {
-                test.binding.progressCircular.isGone = true
-                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setText(android.R.string.ok)
-            }
-        }
-        test.cancel = {
-            mainJob.cancel()
-            runOnDefaultDispatcher {
-                GroupManager.postReload(DataStore.currentGroupId())
-            }
-        }
+    override fun onDestroyView() {
+        profileTestJob?.cancel()
+        super.onDestroyView()
     }
 
     inner class GroupPagerAdapter : FragmentStateAdapter(this),
@@ -1118,6 +1140,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
         private var actionButtonPressed = false
+        private var dragHelper: ItemTouchHelper? = null
 
         private fun isProfileEditable(id: Long): Boolean {
             return ((activity as? MainActivity)
@@ -1227,9 +1250,11 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             if (!parent.select && proxyGroup.type == GroupType.BASIC) {
-                ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+                dragHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
                     ItemTouchHelper.UP or ItemTouchHelper.DOWN, ItemTouchHelper.START
                 ) {
+                    override fun isLongPressDragEnabled() = false
+
                     override fun getSwipeDirs(
                         recyclerView: RecyclerView,
                         viewHolder: RecyclerView.ViewHolder,
@@ -1264,7 +1289,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                         super.clearView(recyclerView, viewHolder)
                         adapter.commitMove()
                     }
-                }).attachToRecyclerView(configurationListView)
+                })
+                dragHelper?.attachToRecyclerView(configurationListView)
 
             }
 
@@ -1571,11 +1597,11 @@ class ConfigurationFragment @JvmOverloads constructor(
             val profileType: TextView = view.findViewById(R.id.profile_type)
             val profileAddress: TextView = view.findViewById(R.id.profile_address)
             val profileStatus: TextView = view.findViewById(R.id.profile_status)
-            val profileDiagnostics: TextView = view.findViewById(R.id.profile_diagnostics)
 
             val trafficText: TextView = view.findViewById(R.id.traffic_text)
             val selectedView: LinearLayout = view.findViewById(R.id.selected_view)
             val editButton: ImageView = view.findViewById(R.id.edit)
+            val dragHandle: ImageView = view.findViewById(R.id.drag_handle)
             val shareLayout: LinearLayout = view.findViewById(R.id.share)
             val shareLayer: LinearLayout = view.findViewById(R.id.share_layer)
             val shareButton: ImageView = view.findViewById(R.id.shareIcon)
@@ -1622,18 +1648,30 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                profileName.text = proxyEntity.displayName()
-                profileType.text = proxyEntity.displayType()
-                val diagnostics = ProfileTestResults.get(proxyEntity)
-                profileDiagnostics.isVisible = diagnostics != null
-                profileDiagnostics.text = diagnostics?.let {
-                    ProfileTestDialog.summary(view.context, it) + "\n" + ProfileTestDialog.lastChecked(view.context, it)
-                }
-                profileDiagnostics.setOnClickListener {
-                    if (!parent.select) ProfileTestDialog.create(profileId = proxyEntity.id, speed = true)
-                        .show(parent.childFragmentManager, "profile-tests")
+                view.setOnLongClickListener(if (parent.select) null else View.OnLongClickListener {
+                    PopupMenu(requireContext(), view).apply {
+                        menuInflater.inflate(R.menu.profile_test_menu, menu)
+                        setOnMenuItemClickListener { item ->
+                            when (item.itemId) {
+                                R.id.action_connection_url_test -> parent.urlTest(proxyEntity.id)
+                                R.id.action_profile_speed_test -> parent.urlTest(proxyEntity.id, speed = true)
+                            }
+                            true
+                        }
+                        show()
+                    }
+                    true
+                })
+                dragHandle.isVisible = !parent.select && proxyGroup.type == GroupType.BASIC
+                dragHandle.setOnTouchListener { _, event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN && isEnabled) {
+                        dragHelper?.startDrag(this@ConfigurationHolder)
+                    }
+                    true
                 }
 
+                profileName.text = proxyEntity.displayName()
+                profileType.text = proxyEntity.displayType()
                 var rx = proxyEntity.rx
                 var tx = proxyEntity.tx
 
@@ -1760,6 +1798,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     profileStatus.setOnClickListener(null)
                 }
 
+                profileStatus.text = ProfileTestResults.statusText(
+                    view.context, proxyEntity, profileStatus.text.toString()
+                )
+                profileStatus.gravity = Gravity.END
+
                 editButton.setOnClickListener {
                     proxyEntity.settingIntent(it.context, proxyGroup.type == GroupType.SUBSCRIPTION)?.let {
                         editProfileLauncher.launch(it)
@@ -1883,11 +1926,11 @@ class ConfigurationFragment @JvmOverloads constructor(
 
                 if (proxyEntity.status <= 0) {
                     if (showTraffic) {
-                        profileStatus.text = trafficText.text
+                        profileStatus.text = ProfileTestResults.statusText(view.context, entity, trafficText.text.toString())
                         profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
                         trafficText.text = ""
                     } else {
-                        profileStatus.text = ""
+                        profileStatus.text = ProfileTestResults.statusText(view.context, entity, "")
                     }
                 }
             }
@@ -1905,10 +1948,6 @@ class ConfigurationFragment @JvmOverloads constructor(
             override fun onMenuItemClick(item: MenuItem): Boolean {
                 try {
                     when (item.itemId) {
-                        R.id.action_profile_country_test, R.id.action_profile_speed_test -> {
-                            ProfileTestDialog.create(profileId = entity.id, speed = item.itemId == R.id.action_profile_speed_test)
-                                .also { test -> parent?.childFragmentManager?.let { test.show(it, "profile-tests") } }
-                        }
                         R.id.action_qr -> {
                             if (entity.wgBean != null) {
                                 entity.wgBean?.toConf()?.let { showCode(it) }

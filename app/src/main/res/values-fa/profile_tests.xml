@@ -2,23 +2,15 @@
 <resources>
     <string name="profile_test_country">بررسی کشور</string>
     <string name="profile_test_speed">آزمون سرعت</string>
-    <string name="profile_test_selected">آزمون نمایه انتخاب‌شده</string>
-    <string name="profile_test_country_note">نشانی IP عمومی خروجی و کشور را از طریق هر نمایه با Cloudflare بررسی می‌کند</string>
     <string name="profile_test_speed_note">کشور را بررسی می‌کند، سپس برای هر نمایه با Cloudflare مقدار 8 MiB دریافت و 2 MiB ارسال می‌کند. آزمون‌ها یکی‌یکی اجرا می‌شوند؛ نتایج به شبکه و سرور آزمون بستگی دارند.</string>
-    <string name="profile_test_start">اجرای آزمون</string>
-    <string name="profile_test_stop">توقف</string>
-    <string name="profile_test_close">بستن</string>
-    <string name="profile_test_ready">آماده</string>
     <string name="profile_test_checking_country">در حال بررسی کشور…</string>
     <string name="profile_test_downloading">در حال اندازه‌گیری دریافت…</string>
     <string name="profile_test_uploading">در حال اندازه‌گیری ارسال…</string>
-    <string name="profile_test_complete">کامل شد</string>
-    <string name="profile_test_stopped">متوقف شد</string>
     <string name="profile_test_progress">%1$d از %2$d</string>
     <string name="profile_test_download">دریافت</string>
     <string name="profile_test_upload">ارسال</string>
-    <string name="profile_test_last_checked">بررسی در %1$s</string>
     <string name="profile_test_browser_unsupported">هدایت از طریق مرورگر در آزمون نمایه‌ها پشتیبانی نمی‌شود</string>
     <string name="profile_test_no_profiles">نمایه‌ای برای آزمون وجود ندارد</string>
     <string name="profile_test_results_changed">نمایه‌ها یا نتایج تغییر کرده‌اند. آزمون را دوباره اجرا کنید.</string>
+    <string name="profile_test_reorder">برای تغییر ترتیب بکشید</string>
 </resources>

@@ -1,6 +1,8 @@
 package io.nekohasekai.sagernet.bg.test
 
 import android.content.Context
+import io.nekohasekai.sagernet.R
+import java.text.NumberFormat
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.fmt.KryoConverters
@@ -48,6 +50,17 @@ object ProfileTestResults {
         result.upload?.let { json.put("upload", it) }
         preferences.edit().putString(profileId.toString(), json.toString()).apply()
         return true
+    }
+
+    fun statusText(context: Context, profile: ProxyEntity, status: String): String {
+        val result = get(profile) ?: return status
+        val flag = result.country.takeIf { it.length == 2 && it.all { ch -> ch in 'A'..'Z' } }
+            ?.map { String(Character.toChars(0x1F1E6 + it.code - 'A'.code)) }?.joinToString("").orEmpty()
+        val formatter = NumberFormat.getNumberInstance().apply { maximumFractionDigits = 2 }
+        fun rate(value: Double) = context.getString(R.string.profile_test_mbps, formatter.format(value / 1_000_000))
+        val rates = listOfNotNull(result.download?.let { "↓ ${rate(it)}" }, result.upload?.let { "↑ ${rate(it)}" })
+        return listOf(listOf(flag, status).filter { it.isNotEmpty() }.joinToString(" "), rates.joinToString(" "))
+            .filter { it.isNotEmpty() }.joinToString("\n")
     }
 
     @Synchronized fun invalidateAll() {
