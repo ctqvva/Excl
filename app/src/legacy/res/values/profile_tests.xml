@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 1.13 supports Android 5/6 but does not include Expressive themes. -->
+    <style name="Theme.Excl.ProfileTests" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+    </style>
+</resources>

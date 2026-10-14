@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">檢查國家</string>
+    <string name="profile_test_speed">速度測試</string>
+    <string name="profile_test_selected">測試所選設定</string>
+    <string name="profile_test_country_note">透過每個設定使用 Cloudflare 檢查出口公用 IP 和國家</string>
+    <string name="profile_test_speed_note">使用 Cloudflare 檢查國家，然後為每個設定下載 8 MiB 並上傳 2 MiB。測試逐一執行；結果取決於網路和測試伺服器。</string>
+    <string name="profile_test_start">開始測試</string>
+    <string name="profile_test_stop">停止</string>
+    <string name="profile_test_close">關閉</string>
+    <string name="profile_test_ready">就緒</string>
+    <string name="profile_test_checking_country">正在檢查國家…</string>
+    <string name="profile_test_downloading">正在測量下載…</string>
+    <string name="profile_test_uploading">正在測量上傳…</string>
+    <string name="profile_test_complete">已完成</string>
+    <string name="profile_test_stopped">已停止</string>
+    <string name="profile_test_progress">%1$d / %2$d</string>
+    <string name="profile_test_download">下載</string>
+    <string name="profile_test_upload">上傳</string>
+    <string name="profile_test_last_checked">檢查時間：%1$s</string>
+    <string name="profile_test_browser_unsupported">設定測試不支援瀏覽器轉送</string>
+    <string name="profile_test_no_profiles">沒有可測試的設定</string>
+    <string name="profile_test_results_changed">設定或結果已變更。請重新執行測試。</string>
+</resources>

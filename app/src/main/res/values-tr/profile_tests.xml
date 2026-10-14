@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Ülkeyi kontrol et</string>
+    <string name="profile_test_speed">Hız testi</string>
+    <string name="profile_test_selected">Seçili profili test et</string>
+    <string name="profile_test_country_note">Cloudflare kullanarak her profil üzerinden genel çıkış IP adresini ve ülkeyi kontrol eder</string>
+    <string name="profile_test_speed_note">Cloudflare ile ülkeyi kontrol eder, ardından profil başına 8 MiB indirir ve 2 MiB yükler. Testler sırayla çalışır; sonuçlar ağa ve test sunucusuna bağlıdır.</string>
+    <string name="profile_test_start">Testi başlat</string>
+    <string name="profile_test_stop">Durdur</string>
+    <string name="profile_test_close">Kapat</string>
+    <string name="profile_test_ready">Hazır</string>
+    <string name="profile_test_checking_country">Ülke kontrol ediliyor…</string>
+    <string name="profile_test_downloading">İndirme ölçülüyor…</string>
+    <string name="profile_test_uploading">Yükleme ölçülüyor…</string>
+    <string name="profile_test_complete">Tamamlandı</string>
+    <string name="profile_test_stopped">Durduruldu</string>
+    <string name="profile_test_progress">%2$d profilden %1$d</string>
+    <string name="profile_test_download">İndirme</string>
+    <string name="profile_test_upload">Yükleme</string>
+    <string name="profile_test_last_checked">Kontrol zamanı: %1$s</string>
+    <string name="profile_test_browser_unsupported">Profil testleri tarayıcı yönlendirmesini desteklemiyor</string>
+    <string name="profile_test_no_profiles">Test edilecek profil yok</string>
+    <string name="profile_test_results_changed">Profiller veya sonuçlar değişti. Testi yeniden çalıştırın.</string>
+</resources>

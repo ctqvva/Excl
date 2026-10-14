@@ -23,7 +23,7 @@
     <string name="profile_test_progress">%1$d of %2$d</string>
     <string name="profile_test_download">Download</string>
     <string name="profile_test_upload">Upload</string>
-    <string name="profile_test_mbps">%1$s Mbps</string>
+    <string name="profile_test_mbps" translatable="false">%1$s Mbps</string>
     <string name="profile_test_last_checked">Checked %1$s</string>
     <string name="profile_test_browser_unsupported">Browser forwarding is not supported by profile tests</string>
     <string name="profile_test_no_profiles">No profiles to test</string>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Comprobar país</string>
+    <string name="profile_test_speed">Prueba de velocidad</string>
+    <string name="profile_test_selected">Probar perfil seleccionado</string>
+    <string name="profile_test_country_note">Comprueba la IP pública de salida y el país mediante cada perfil con Cloudflare</string>
+    <string name="profile_test_speed_note">Comprueba el país, luego descarga 8 MiB y sube 2 MiB por perfil con Cloudflare. Las pruebas se ejecutan una a una; los resultados dependen de la red y del servidor de prueba.</string>
+    <string name="profile_test_start">Iniciar prueba</string>
+    <string name="profile_test_stop">Detener</string>
+    <string name="profile_test_close">Cerrar</string>
+    <string name="profile_test_ready">Listo</string>
+    <string name="profile_test_checking_country">Comprobando país…</string>
+    <string name="profile_test_downloading">Midiendo descarga…</string>
+    <string name="profile_test_uploading">Midiendo subida…</string>
+    <string name="profile_test_complete">Completado</string>
+    <string name="profile_test_stopped">Detenido</string>
+    <string name="profile_test_progress">%1$d de %2$d</string>
+    <string name="profile_test_download">Descarga</string>
+    <string name="profile_test_upload">Subida</string>
+    <string name="profile_test_last_checked">Comprobado %1$s</string>
+    <string name="profile_test_browser_unsupported">Las pruebas de perfiles no admiten el reenvío por navegador</string>
+    <string name="profile_test_no_profiles">No hay perfiles para probar</string>
+    <string name="profile_test_results_changed">Los perfiles o resultados han cambiado. Vuelve a ejecutar la prueba.</string>
+</resources>

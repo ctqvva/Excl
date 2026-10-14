@@ -1,6 +1,8 @@
 package io.nekohasekai.sagernet.bg.test
 
 import android.net.Network
+import com.google.gson.JsonParser
+import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.TunImplementation
@@ -38,6 +40,7 @@ object ProfileTestRunner {
         profile: ProxyEntity, speed: Boolean,
         onPhase: suspend (Phase) -> Unit,
         onResult: suspend (ProfileTestResults.Result) -> Unit,
+        onError: suspend (Phase, Exception) -> Unit,
     ) = withContext(Dispatchers.IO) {
         val instance = TestInstance(profile)
         val pluginError = AtomicReference<Exception?>()
@@ -49,8 +52,12 @@ object ProfileTestRunner {
         try {
             instance.init()
             ensureActive()
+            check(!instance.config.requireWs && !instance.config.requireSh) {
+                SagerNet.application.getString(R.string.profile_test_browser_unsupported)
+            }
             instance.launch()
             if (instance.pluginPath.isNotEmpty() || profile.type == ProxyEntity.TYPE_BYEBYEDPI) delay(500)
+            pluginError.get()?.let { throw it }
             val native = Libexclavecore.newProfileProbe(instance.v2rayPoint)
             probe.set(native)
             val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -58,22 +65,31 @@ object ProfileTestRunner {
             }
             try {
                 var result = ProfileTestResults.Result(ProfileTestResults.fingerprint(profile))
-                onPhase(Phase.COUNTRY)
-                val country = native.country()
-                pluginError.get()?.let { throw it }
-                ensureActive()
-                result = result.copy(ip = country.ip, country = country.countryCode)
-                onResult(result)
-                if (speed) {
-                    onPhase(Phase.DOWNLOAD)
-                    val download = native.download()
-                    ensureActive()
-                    result = result.copy(download = download)
+                suspend fun <T> measure(phase: Phase, block: () -> T): T? {
+                    onPhase(phase)
+                    return try {
+                        block().also { ensureActive() }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        ensureActive()
+                        pluginError.get()?.let { throw it }
+                        onError(phase, e)
+                        null
+                    }
+                }
+                measure(Phase.COUNTRY) { native.country() }?.let { country ->
+                    result = result.copy(ip = country.ip, country = country.countryCode)
                     onResult(result)
-                    onPhase(Phase.UPLOAD)
-                    val upload = native.upload()
-                    ensureActive()
-                    onResult(result.copy(upload = upload))
+                }
+                if (speed) {
+                    measure(Phase.DOWNLOAD) { native.download() }?.let { download ->
+                        result = result.copy(download = download)
+                        onResult(result)
+                    }
+                    measure(Phase.UPLOAD) { native.upload() }?.let { upload ->
+                        onResult(result.copy(upload = upload))
+                    }
                 }
                 pluginError.get()?.let { throw it }
             } finally {
@@ -88,7 +104,18 @@ object ProfileTestRunner {
     private class TestInstance(profile: ProxyEntity) : V2RayInstance(profile), LocalResolver {
         @Volatile override var underlyingNetwork: Network? = null
 
-        override fun buildConfig() { config = buildV2RayConfig(profile, forTest = true) }
+        override fun buildConfig() {
+            config = buildV2RayConfig(profile, forTest = true)
+            if (profile.type == ProxyEntity.TYPE_CONFIG && profile.configBean?.type == "v2ray") {
+                // Full custom configs retain their inbounds in the shared builder.
+                // Diagnostics need only outbound dispatch, never production listeners.
+                val json = JsonParser.parseString(config.config).asJsonObject
+                json.remove("inbounds")
+                json.remove("api")
+                json.remove("metrics")
+                config.config = json.toString()
+            }
+        }
 
         override suspend fun init() {
             super.init()

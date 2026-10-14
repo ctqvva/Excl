@@ -95,3 +95,54 @@ func TestHTTPFailuresAndRedirects(t *testing.T) {
 		}
 	}
 }
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestBoundedTransferValidation(t *testing.T) {
+	p := NewProfileProbe(&V2RayInstance{})
+	defer p.Close()
+	p.client.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Header.Get("Accept-Encoding") != "identity" {
+			t.Fatal("compressed sample")
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("short"))}, nil
+	})
+	if _, err := p.Download(); err == nil {
+		t.Fatal("truncated sample reported as a speed")
+	}
+	p.client.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		n, err := io.Copy(io.Discard, r.Body)
+		if err != nil || n != probeUploadBytes || r.ContentLength != probeUploadBytes {
+			t.Fatalf("upload payload: %d bytes, length %d, error %v", n, r.ContentLength, err)
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("ok"))}, nil
+	})
+	if rate, err := p.Upload(); err != nil || rate <= 0 {
+		t.Fatalf("upload: %v, %v", rate, err)
+	}
+}
+
+func TestDeadlineDuringBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	p := NewProfileProbe(&V2RayInstance{dial: (&net.Dialer{}).DialContext})
+	defer p.Close()
+	if p.client.Timeout != 20*time.Second {
+		t.Fatal("missing production deadline")
+	}
+	p.client.Timeout = 50 * time.Millisecond
+	resp, err := p.request("GET", server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if _, err = io.ReadAll(resp.Body); err == nil {
+		t.Fatal("body read exceeded deadline")
+	}
+}

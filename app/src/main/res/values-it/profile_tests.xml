@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Verifica paese</string>
+    <string name="profile_test_speed">Test di velocità</string>
+    <string name="profile_test_selected">Prova profilo selezionato</string>
+    <string name="profile_test_country_note">Verifica l’IP pubblico di uscita e il paese attraverso ogni profilo con Cloudflare</string>
+    <string name="profile_test_speed_note">Verifica il paese, poi scarica 8 MiB e carica 2 MiB per profilo con Cloudflare. I test vengono eseguiti uno alla volta; i risultati dipendono dalla rete e dal server di test.</string>
+    <string name="profile_test_start">Avvia test</string>
+    <string name="profile_test_stop">Interrompi</string>
+    <string name="profile_test_close">Chiudi</string>
+    <string name="profile_test_ready">Pronto</string>
+    <string name="profile_test_checking_country">Verifica del paese…</string>
+    <string name="profile_test_downloading">Misurazione download…</string>
+    <string name="profile_test_uploading">Misurazione upload…</string>
+    <string name="profile_test_complete">Completato</string>
+    <string name="profile_test_stopped">Interrotto</string>
+    <string name="profile_test_progress">%1$d di %2$d</string>
+    <string name="profile_test_download">Download</string>
+    <string name="profile_test_upload">Upload</string>
+    <string name="profile_test_last_checked">Verificato %1$s</string>
+    <string name="profile_test_browser_unsupported">L’inoltro tramite browser non è supportato dai test dei profili</string>
+    <string name="profile_test_no_profiles">Nessun profilo da testare</string>
+    <string name="profile_test_results_changed">I profili o i risultati sono cambiati. Esegui nuovamente il test.</string>
+</resources>

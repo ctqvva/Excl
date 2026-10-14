@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">检查国家</string>
+    <string name="profile_test_speed">速度测试</string>
+    <string name="profile_test_selected">测试所选配置</string>
+    <string name="profile_test_country_note">通过每个配置使用 Cloudflare 检查出口公网 IP 和国家</string>
+    <string name="profile_test_speed_note">使用 Cloudflare 检查国家，然后为每个配置下载 8 MiB 并上传 2 MiB。测试逐个运行；结果取决于网络和测试服务器。</string>
+    <string name="profile_test_start">开始测试</string>
+    <string name="profile_test_stop">停止</string>
+    <string name="profile_test_close">关闭</string>
+    <string name="profile_test_ready">就绪</string>
+    <string name="profile_test_checking_country">正在检查国家…</string>
+    <string name="profile_test_downloading">正在测量下载…</string>
+    <string name="profile_test_uploading">正在测量上传…</string>
+    <string name="profile_test_complete">已完成</string>
+    <string name="profile_test_stopped">已停止</string>
+    <string name="profile_test_progress">%1$d / %2$d</string>
+    <string name="profile_test_download">下载</string>
+    <string name="profile_test_upload">上传</string>
+    <string name="profile_test_last_checked">检查时间：%1$s</string>
+    <string name="profile_test_browser_unsupported">配置测试不支持浏览器转发</string>
+    <string name="profile_test_no_profiles">没有可测试的配置</string>
+    <string name="profile_test_results_changed">配置或结果已更改。请重新运行测试。</string>
+</resources>

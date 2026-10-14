@@ -5,7 +5,6 @@ import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -40,6 +39,7 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
         var stage: String,
         var result: ProfileTestResults.Result? = null,
         var failed: Boolean = false,
+        val errors: MutableList<String> = ArrayList(),
     )
 
     override fun getTheme() = R.style.Theme_Excl_ProfileTests
@@ -103,6 +103,14 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
         binding?.root?.layoutParams = binding?.root?.layoutParams?.apply {
             height = (resources.displayMetrics.heightPixels * 0.85).toInt()
         }
+        binding?.root?.post {
+            binding?.testHeader?.let { header ->
+                // Keep actions/results reachable on short screens and with large fonts.
+                header.layoutParams = header.layoutParams.apply {
+                    height = minOf(header.measuredHeight, (resources.displayMetrics.heightPixels * 0.4).toInt())
+                }
+            }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -139,13 +147,17 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
             setRunning(true)
             val epoch = ProfileTestResults.changes.value
             var finished = 0
-            rows.forEach { it.stage = getString(R.string.profile_test_ready); it.failed = false }
+            rows.forEach { it.stage = getString(R.string.profile_test_ready); it.failed = false; it.errors.clear() }
             adapter.notifyDataSetChanged()
             binding?.testProgress?.setProgressCompat(0, false)
             try {
                 for ((index, row) in rows.withIndex()) {
                     ensureActive()
                     try {
+                        val current = withContext(Dispatchers.IO) { ProfileManager.getProfile(row.profile.id) }
+                        if (current == null || ProfileTestResults.fingerprint(current) != ProfileTestResults.fingerprint(row.profile) ||
+                            ProfileTestResults.changes.value != epoch
+                        ) error(getString(R.string.profile_test_results_changed))
                         val browser = withContext(Dispatchers.IO) { ProfileTestRunner.usesBrowserForwarder(row.profile) }
                         if (browser) error(getString(R.string.profile_test_browser_unsupported))
                         ProfileTestRunner.run(row.profile, speed,
@@ -169,8 +181,19 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
                                 ProfileManager.postUpdate(row.profile.id)
                                 withContext(Dispatchers.Main) { row.result = result; adapter.notifyItemChanged(index) }
                             },
+                            onError = { phase, error ->
+                                withContext(Dispatchers.Main) {
+                                    val label = getString(when (phase) {
+                                        ProfileTestRunner.Phase.COUNTRY -> R.string.profile_test_country
+                                        ProfileTestRunner.Phase.DOWNLOAD -> R.string.profile_test_download
+                                        ProfileTestRunner.Phase.UPLOAD -> R.string.profile_test_upload
+                                    })
+                                    row.errors.add("$label: ${error.readableMessage}")
+                                    row.failed = true
+                                }
+                            },
                         )
-                        row.stage = getString(R.string.profile_test_complete)
+                        row.stage = if (row.failed) row.errors.joinToString("\n") else getString(R.string.profile_test_complete)
                     } catch (e: CancellationException) {
                         row.stage = getString(R.string.profile_test_stopped)
                         throw e
@@ -208,7 +231,7 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
             ui.testProfileName.text = row.profile.displayName()
             ui.testProfileStage.text = row.stage
             ui.testProfileStage.setTextColor(ui.root.context.getColorAttr(
-                if (row.failed) com.google.android.material.R.attr.colorError else com.google.android.material.R.attr.colorOnSurfaceVariant
+                if (row.failed) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorOnSurfaceVariant
             ))
             val result = row.result
             ui.testProfileCountry.isVisible = result?.country?.isNotEmpty() == true
@@ -227,13 +250,17 @@ class ProfileTestDialog : BottomSheetDialogFragment() {
 
     companion object {
         fun create(groupId: Long = 0, profileId: Long = 0, speed: Boolean = false) = ProfileTestDialog().apply {
-            arguments = bundleOf("groupId" to groupId, "profileId" to profileId, "speed" to speed)
+            arguments = Bundle().apply {
+                putLong("groupId", groupId)
+                putLong("profileId", profileId)
+                putBoolean("speed", speed)
+            }
         }
 
         fun countryLabel(code: String): String {
             if (code.length != 2 || code.any { it !in 'A'..'Z' }) return code
             val flag = code.map { String(Character.toChars(0x1F1E6 + it.code - 'A'.code)) }.joinToString("")
-            return "$flag ${Locale("", code).displayCountry}"
+            return "$flag ${Locale.Builder().setRegion(code).build().displayCountry}"
         }
 
         fun summary(context: android.content.Context, result: ProfileTestResults.Result): String = buildList {

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Проверка страны</string>
+    <string name="profile_test_speed">Тест скорости</string>
+    <string name="profile_test_selected">Проверить выбранный профиль</string>
+    <string name="profile_test_country_note">Проверяет внешний IP-адрес и страну через каждый профиль с помощью Cloudflare</string>
+    <string name="profile_test_speed_note">Проверяет страну, затем скачивает 8 МиБ и отправляет 2 МиБ через каждый профиль с помощью Cloudflare. Профили проверяются по очереди; результаты зависят от сети и сервера проверки.</string>
+    <string name="profile_test_start">Запустить тест</string>
+    <string name="profile_test_stop">Остановить</string>
+    <string name="profile_test_close">Закрыть</string>
+    <string name="profile_test_ready">Готово к проверке</string>
+    <string name="profile_test_checking_country">Проверка страны…</string>
+    <string name="profile_test_downloading">Измерение загрузки…</string>
+    <string name="profile_test_uploading">Измерение отправки…</string>
+    <string name="profile_test_complete">Завершено</string>
+    <string name="profile_test_stopped">Остановлено</string>
+    <string name="profile_test_progress">%1$d из %2$d</string>
+    <string name="profile_test_download">Загрузка</string>
+    <string name="profile_test_upload">Отправка</string>
+    <string name="profile_test_last_checked">Проверено %1$s</string>
+    <string name="profile_test_browser_unsupported">Проверка профилей не поддерживает перенаправление через браузер</string>
+    <string name="profile_test_no_profiles">Нет профилей для проверки</string>
+    <string name="profile_test_results_changed">Профили или результаты изменились. Запустите проверку снова.</string>
+</resources>

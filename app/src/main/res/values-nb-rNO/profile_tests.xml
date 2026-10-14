@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Sjekk land</string>
+    <string name="profile_test_speed">Hastighetstest</string>
+    <string name="profile_test_selected">Test valgt profil</string>
+    <string name="profile_test_country_note">Sjekker offentlig utgående IP og land gjennom hver profil med Cloudflare</string>
+    <string name="profile_test_speed_note">Sjekker land, laster deretter ned 8 MiB og opp 2 MiB per profil med Cloudflare. Testene kjøres én om gangen; resultatene avhenger av nettverket og testserveren.</string>
+    <string name="profile_test_start">Start test</string>
+    <string name="profile_test_stop">Stopp</string>
+    <string name="profile_test_close">Lukk</string>
+    <string name="profile_test_ready">Klar</string>
+    <string name="profile_test_checking_country">Sjekker land…</string>
+    <string name="profile_test_downloading">Måler nedlasting…</string>
+    <string name="profile_test_uploading">Måler opplasting…</string>
+    <string name="profile_test_complete">Fullført</string>
+    <string name="profile_test_stopped">Stoppet</string>
+    <string name="profile_test_progress">%1$d av %2$d</string>
+    <string name="profile_test_download">Nedlasting</string>
+    <string name="profile_test_upload">Opplasting</string>
+    <string name="profile_test_last_checked">Sjekket %1$s</string>
+    <string name="profile_test_browser_unsupported">Videresending via nettleser støttes ikke av profiltester</string>
+    <string name="profile_test_no_profiles">Ingen profiler å teste</string>
+    <string name="profile_test_results_changed">Profiler eller resultater er endret. Kjør testen på nytt.</string>
+</resources>

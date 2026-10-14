@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Periksa negara</string>
+    <string name="profile_test_speed">Uji kecepatan</string>
+    <string name="profile_test_selected">Uji profil terpilih</string>
+    <string name="profile_test_country_note">Memeriksa IP keluar publik dan negara melalui setiap profil menggunakan Cloudflare</string>
+    <string name="profile_test_speed_note">Memeriksa negara, lalu mengunduh 8 MiB dan mengunggah 2 MiB per profil menggunakan Cloudflare. Pengujian berjalan satu per satu; hasil bergantung pada jaringan dan server pengujian.</string>
+    <string name="profile_test_start">Mulai uji</string>
+    <string name="profile_test_stop">Hentikan</string>
+    <string name="profile_test_close">Tutup</string>
+    <string name="profile_test_ready">Siap</string>
+    <string name="profile_test_checking_country">Memeriksa negara…</string>
+    <string name="profile_test_downloading">Mengukur unduhan…</string>
+    <string name="profile_test_uploading">Mengukur unggahan…</string>
+    <string name="profile_test_complete">Selesai</string>
+    <string name="profile_test_stopped">Dihentikan</string>
+    <string name="profile_test_progress">%1$d dari %2$d</string>
+    <string name="profile_test_download">Unduh</string>
+    <string name="profile_test_upload">Unggah</string>
+    <string name="profile_test_last_checked">Diperiksa %1$s</string>
+    <string name="profile_test_browser_unsupported">Penerusan melalui peramban tidak didukung oleh pengujian profil</string>
+    <string name="profile_test_no_profiles">Tidak ada profil untuk diuji</string>
+    <string name="profile_test_results_changed">Profil atau hasil berubah. Jalankan pengujian lagi.</string>
+</resources>
