@@ -1,3 +1,6 @@
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-parcelize")
@@ -7,6 +10,46 @@ plugins {
 }
 
 setupApp()
+
+val verifyNativeCoreBindings = tasks.register("verifyNativeCoreBindings") {
+    group = "verification"
+    description = "Verify that the local core AAR exposes the app's profile-test bindings"
+    val coreAar = layout.projectDirectory.file("libs/libexclavecore.aar").asFile
+    inputs.files(coreAar)
+    doLast {
+        val rebuild = "Rebuild it from the repository root with ./run lib core " +
+            "(or ./library/core/build.sh), then rerun Gradle."
+        if (!coreAar.isFile) {
+            throw GradleException("Native core AAR is missing: $coreAar. $rebuild")
+        }
+        val required = setOf("libexclavecore/ProfileProbe.class", "libexclavecore/ProfileCountry.class")
+        val bindings: Set<String> = try {
+            ZipFile(coreAar).use { aar ->
+                val classes = aar.getEntry("classes.jar")
+                    ?: throw GradleException("Native core AAR has no classes.jar. $rebuild")
+                ZipInputStream(aar.getInputStream(classes)).use { jar ->
+                    buildSet<String> {
+                        var entry = jar.nextEntry
+                        while (entry != null) {
+                            add(entry.name)
+                            entry = jar.nextEntry
+                        }
+                    }
+                }
+            }
+        } catch (e: java.io.IOException) {
+            throw GradleException("Cannot read native core AAR: $coreAar. $rebuild", e)
+        }
+        val missing = required - bindings
+        if (missing.isNotEmpty()) {
+            throw GradleException("Native core AAR is stale; missing ${missing.joinToString()}. $rebuild")
+        }
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(verifyNativeCoreBindings)
+}
 
 android {
     namespace = "io.nekohasekai.sagernet"

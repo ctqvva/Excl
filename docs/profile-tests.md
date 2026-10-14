@@ -51,3 +51,10 @@ cd ../..
 Both core build scripts copy the probe sources into the temporary remote module
 before binding. Do not distribute an APK with an old core AAR: it must expose
 `NewProfileProbe`, `ProfileProbe`, and `ProfileCountry`.
+
+If Kotlin reports `Unresolved reference 'ProfileProbe'` or `newProfileProbe`, the
+checkout is using an older core AAR. Run `./run lib core` or
+`./library/core/build.sh` from the repository root before rerunning Gradle.
+`verifyNativeCoreBindings` checks the local AAR before the app build and reports
+this mismatch explicitly. The build scripts publish the AAR even when `app/libs`
+does not yet exist. A rebuilt AAR in another worktree does not update this checkout.

@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 export PATH="$PATH:$HOME/go/bin"
 
 workdir="$(mktemp -d "${TMPDIR:-/tmp}/excl-core.XXXXXX")"
@@ -53,6 +55,5 @@ GOOS=android GOARCH=arm64 go list -m -tags=with_clash,android all >/dev/null
 CGO_LDFLAGS="-Wl,-z,max-page-size=16384" gomobile bind -v -androidapi 21 -trimpath -ldflags="-s -buildid=" -tags="with_clash" "github.com/exclavenetwork/libexclavecore" || exit 1
 
 proj=../../app/libs
-if [ -d "$proj" ]; then
-  cp -vf libexclavecore.aar "$proj"
-fi
+mkdir -p "$proj"
+cp -vf libexclavecore.aar "$proj"
