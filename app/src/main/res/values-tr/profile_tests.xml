@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Ülkeyi kontrol et</string>
+    <string name="profile_test_speed">Hız testi</string>
+    <string name="profile_test_checking_country">Ülke kontrol ediliyor…</string>
+    <string name="profile_test_downloading">İndirme ölçülüyor…</string>
+    <string name="profile_test_uploading">Yükleme ölçülüyor…</string>
+    <string name="profile_test_progress">%2$d profilden %1$d</string>
+    <string name="profile_test_download">İndirme</string>
+    <string name="profile_test_upload">Yükleme</string>
+    <string name="profile_test_browser_unsupported">Profil testleri tarayıcı yönlendirmesini desteklemiyor</string>
+    <string name="profile_test_no_profiles">Test edilecek profil yok</string>
+    <string name="profile_test_reorder">Sıralamak için sürükleyin</string>
+    <string name="profile_test_cancel">Testleri iptal et</string>
+    <string name="profile_test_need_available">Önce URL testini çalıştırın. Hız testleri yalnızca kullanılabilir profillerde çalışır.</string>
+</resources>

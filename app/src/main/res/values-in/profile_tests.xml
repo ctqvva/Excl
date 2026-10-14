@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Periksa negara</string>
+    <string name="profile_test_speed">Uji kecepatan</string>
+    <string name="profile_test_checking_country">Memeriksa negara…</string>
+    <string name="profile_test_downloading">Mengukur unduhan…</string>
+    <string name="profile_test_uploading">Mengukur unggahan…</string>
+    <string name="profile_test_progress">%1$d dari %2$d</string>
+    <string name="profile_test_download">Unduh</string>
+    <string name="profile_test_upload">Unggah</string>
+    <string name="profile_test_browser_unsupported">Penerusan melalui peramban tidak didukung oleh pengujian profil</string>
+    <string name="profile_test_no_profiles">Tidak ada profil untuk diuji</string>
+    <string name="profile_test_reorder">Seret untuk mengurutkan ulang</string>
+    <string name="profile_test_cancel">Batalkan pengujian</string>
+    <string name="profile_test_need_available">Jalankan uji URL terlebih dahulu. Uji kecepatan hanya berjalan pada profil yang tersedia.</string>
+</resources>

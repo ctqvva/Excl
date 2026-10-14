@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">检查国家</string>
+    <string name="profile_test_speed">速度测试</string>
+    <string name="profile_test_checking_country">正在检查国家…</string>
+    <string name="profile_test_downloading">正在测量下载…</string>
+    <string name="profile_test_uploading">正在测量上传…</string>
+    <string name="profile_test_progress">%1$d / %2$d</string>
+    <string name="profile_test_download">下载</string>
+    <string name="profile_test_upload">上传</string>
+    <string name="profile_test_browser_unsupported">配置测试不支持浏览器转发</string>
+    <string name="profile_test_no_profiles">没有可测试的配置</string>
+    <string name="profile_test_reorder">拖动以重新排序</string>
+    <string name="profile_test_cancel">取消测试</string>
+    <string name="profile_test_need_available">请先进行 URL 测试。速度测试仅针对可用的配置运行。</string>
+</resources>

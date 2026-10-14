@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Kontrola země</string>
+    <string name="profile_test_speed">Test rychlosti</string>
+    <string name="profile_test_checking_country">Kontrola země…</string>
+    <string name="profile_test_downloading">Měření stahování…</string>
+    <string name="profile_test_uploading">Měření odesílání…</string>
+    <string name="profile_test_progress">%1$d z %2$d</string>
+    <string name="profile_test_download">Stahování</string>
+    <string name="profile_test_upload">Odesílání</string>
+    <string name="profile_test_browser_unsupported">Přesměrování přes prohlížeč není při testování profilů podporováno</string>
+    <string name="profile_test_no_profiles">Žádné profily k testování</string>
+    <string name="profile_test_reorder">Přetažením změňte pořadí</string>
+    <string name="profile_test_cancel">Zrušit testy</string>
+    <string name="profile_test_need_available">Nejprve spusťte test URL. Testy rychlosti se spouštějí pouze pro dostupné profily.</string>
+</resources>

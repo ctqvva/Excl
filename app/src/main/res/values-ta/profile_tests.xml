@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">நாட்டைச் சரிபார்</string>
+    <string name="profile_test_speed">வேகச் சோதனை</string>
+    <string name="profile_test_checking_country">நாடு சரிபார்க்கப்படுகிறது…</string>
+    <string name="profile_test_downloading">பதிவிறக்கம் அளவிடப்படுகிறது…</string>
+    <string name="profile_test_uploading">பதிவேற்றம் அளவிடப்படுகிறது…</string>
+    <string name="profile_test_progress">%2$d இல் %1$d</string>
+    <string name="profile_test_download">பதிவிறக்கம்</string>
+    <string name="profile_test_upload">பதிவேற்றம்</string>
+    <string name="profile_test_browser_unsupported">சுயவிவரச் சோதனைகள் உலாவி வழி அனுப்புதலை ஆதரிக்கவில்லை</string>
+    <string name="profile_test_no_profiles">சோதிக்கச் சுயவிவரங்கள் இல்லை</string>
+    <string name="profile_test_reorder">வரிசையை மாற்ற இழுக்கவும்</string>
+    <string name="profile_test_cancel">சோதனைகளை ரத்து செய்</string>
+    <string name="profile_test_need_available">முதலில் URL சோதனையை இயக்கவும். கிடைக்கும் சுயவிவரங்களில் மட்டுமே வேகச் சோதனை இயங்கும்.</string>
+</resources>

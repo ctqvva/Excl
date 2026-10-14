@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">国を確認</string>
+    <string name="profile_test_speed">速度テスト</string>
+    <string name="profile_test_checking_country">国を確認中…</string>
+    <string name="profile_test_downloading">ダウンロードを測定中…</string>
+    <string name="profile_test_uploading">アップロードを測定中…</string>
+    <string name="profile_test_progress">%2$d 件中 %1$d 件</string>
+    <string name="profile_test_download">ダウンロード</string>
+    <string name="profile_test_upload">アップロード</string>
+    <string name="profile_test_browser_unsupported">プロファイルテストではブラウザー転送に対応していません</string>
+    <string name="profile_test_no_profiles">テストするプロファイルがありません</string>
+    <string name="profile_test_reorder">ドラッグして並べ替え</string>
+    <string name="profile_test_cancel">テストをキャンセル</string>
+    <string name="profile_test_need_available">まず URL テストを実行してください。速度テストは利用可能なプロファイルでのみ実行されます。</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Проверка страны</string>
+    <string name="profile_test_speed">Тест скорости</string>
+    <string name="profile_test_checking_country">Проверка страны…</string>
+    <string name="profile_test_downloading">Измерение загрузки…</string>
+    <string name="profile_test_uploading">Измерение отправки…</string>
+    <string name="profile_test_progress">%1$d из %2$d</string>
+    <string name="profile_test_download">Загрузка</string>
+    <string name="profile_test_upload">Отправка</string>
+    <string name="profile_test_browser_unsupported">Проверка профилей не поддерживает перенаправление через браузер</string>
+    <string name="profile_test_no_profiles">Нет профилей для проверки</string>
+    <string name="profile_test_reorder">Перетащите для изменения порядка</string>
+    <string name="profile_test_cancel">Отменить проверку</string>
+    <string name="profile_test_need_available">Сначала выполните проверку URL. Тест скорости запускается только для доступных профилей.</string>
+</resources>

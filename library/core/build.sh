@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 export PATH="$PATH:$HOME/go/bin"
 
 workdir="$(mktemp -d "${TMPDIR:-/tmp}/excl-core.XXXXXX")"
@@ -33,6 +35,15 @@ cp -R "$v2ray_src"/. "$v2ray_tmp"
 chmod -R u+w "$v2ray_tmp"
 patch -p1 -d "$v2ray_tmp" < patches/v2ray-amneziawg.patch
 
+# Keep app-owned probes in the remote module so gomobile exposes their APIs.
+lib_src="$(go list -m -f '{{.Dir}}' github.com/exclavenetwork/libexclavecore)"
+[ -n "$lib_src" ] && [ -d "$lib_src" ] || { echo "Missing libexclavecore source" >&2; exit 1; }
+lib_tmp="$workdir/libexclavecore"
+cp -R "$lib_src"/. "$lib_tmp"
+chmod -R u+w "$lib_tmp"
+cp profileprobe/profile_probe.go profileprobe/profile_probe_dial.go "$lib_tmp/"
+go mod edit -replace=github.com/exclavenetwork/libexclavecore="$lib_tmp"
+
 go mod edit -replace=golang.zx2c4.com/wireguard="$awg_tmp"
 go mod edit -replace=github.com/exclavenetwork/exclave-core/v5="$v2ray_tmp"
 go mod tidy
@@ -44,6 +55,5 @@ GOOS=android GOARCH=arm64 go list -m -tags=with_clash,android all >/dev/null
 CGO_LDFLAGS="-Wl,-z,max-page-size=16384" gomobile bind -v -androidapi 21 -trimpath -ldflags="-s -buildid=" -tags="with_clash" "github.com/exclavenetwork/libexclavecore" || exit 1
 
 proj=../../app/libs
-if [ -d "$proj" ]; then
-  cp -vf libexclavecore.aar "$proj"
-fi
+mkdir -p "$proj"
+cp -vf libexclavecore.aar "$proj"

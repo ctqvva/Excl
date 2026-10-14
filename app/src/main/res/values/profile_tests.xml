@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Country check</string>
+    <string name="profile_test_speed">Speed test</string>
+    <string name="profile_test_checking_country">Checking country…</string>
+    <string name="profile_test_downloading">Measuring download…</string>
+    <string name="profile_test_uploading">Measuring upload…</string>
+    <string name="profile_test_progress">%1$d of %2$d</string>
+    <string name="profile_test_download">Download</string>
+    <string name="profile_test_upload">Upload</string>
+    <string name="profile_test_mbps" translatable="false">%1$s Mbps</string>
+    <string name="profile_test_browser_unsupported">Browser forwarding is not supported by profile tests</string>
+    <string name="profile_test_no_profiles">No profiles to test</string>
+    <string name="profile_test_reorder">Drag to reorder</string>
+    <string name="profile_test_cancel">Cancel tests</string>
+    <string name="profile_test_need_available">Run a URL check first. Speed tests only run on available profiles.</string>
+</resources>

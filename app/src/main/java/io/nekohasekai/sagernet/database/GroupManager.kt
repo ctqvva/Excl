@@ -19,6 +19,8 @@
 
 package io.nekohasekai.sagernet.database
 
+import io.nekohasekai.sagernet.bg.test.ProfileTestResults
+
 import io.nekohasekai.sagernet.GroupType
 import io.nekohasekai.sagernet.bg.SubscriptionUpdater
 import io.nekohasekai.sagernet.ktx.applyDefaultValues
@@ -109,7 +111,11 @@ object GroupManager {
     }
 
     suspend fun updateGroup(group: ProxyGroup, reconfigureUpdater: Boolean = true) {
+        val previous = SagerDatabase.groupDao.getById(group.id)
         SagerDatabase.groupDao.updateGroup(group)
+        if (previous == null || previous.frontProxy != group.frontProxy || previous.landingProxy != group.landingProxy) {
+            ProfileTestResults.invalidateAll()
+        }
         iterator { groupUpdated(group) }
         if (reconfigureUpdater && group.type == GroupType.SUBSCRIPTION && group.subscription!!.autoUpdate) {
             SubscriptionUpdater.reconfigureUpdater()
@@ -120,6 +126,7 @@ object GroupManager {
         val group = SagerDatabase.groupDao.getById(groupId)
         SagerDatabase.groupDao.deleteById(groupId)
         SagerDatabase.proxyDao.deleteByGroup(groupId)
+        ProfileTestResults.invalidateAll()
         iterator { groupRemoved(groupId) }
         if (group?.type == GroupType.SUBSCRIPTION && group.subscription!!.autoUpdate) {
             SubscriptionUpdater.reconfigureUpdater()
@@ -129,6 +136,7 @@ object GroupManager {
     suspend fun deleteGroup(group: List<ProxyGroup>) {
         SagerDatabase.groupDao.deleteGroup(group)
         SagerDatabase.proxyDao.deleteByGroup(group.map { it.id }.toLongArray())
+        ProfileTestResults.invalidateAll()
         for (proxyGroup in group) iterator { groupRemoved(proxyGroup.id) }
         if (group.any { it.type == GroupType.SUBSCRIPTION && it.subscription!!.autoUpdate }) {
             SubscriptionUpdater.reconfigureUpdater()

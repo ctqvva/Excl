@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_test_country">Comprobar país</string>
+    <string name="profile_test_speed">Prueba de velocidad</string>
+    <string name="profile_test_checking_country">Comprobando país…</string>
+    <string name="profile_test_downloading">Midiendo descarga…</string>
+    <string name="profile_test_uploading">Midiendo subida…</string>
+    <string name="profile_test_progress">%1$d de %2$d</string>
+    <string name="profile_test_download">Descarga</string>
+    <string name="profile_test_upload">Subida</string>
+    <string name="profile_test_browser_unsupported">Las pruebas de perfiles no admiten el reenvío por navegador</string>
+    <string name="profile_test_no_profiles">No hay perfiles para probar</string>
+    <string name="profile_test_reorder">Arrastra para reordenar</string>
+    <string name="profile_test_cancel">Cancelar pruebas</string>
+    <string name="profile_test_need_available">Primero realiza una prueba de URL. Las pruebas de velocidad solo se ejecutan en perfiles disponibles.</string>
+</resources>

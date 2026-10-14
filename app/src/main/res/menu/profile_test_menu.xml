@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/action_connection_url_test" android:title="@string/connection_test_url_test" />
+    <item android:id="@+id/action_profile_speed_test" android:title="@string/profile_test_speed" />
+</menu>
